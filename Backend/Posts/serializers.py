@@ -1,6 +1,10 @@
 from rest_framework import serializers
-from .models import Post, SavedPost
+from .models import Post, SavedPost,PostQuestion
 import re
+class PostQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=PostQuestion
+        fields=['id','post','user','question','time','date','is_answered','answered_date','answered_time','answer']
 
 class PostSavedSerializer(serializers.ModelSerializer):
     class Meta:
@@ -9,7 +13,7 @@ class PostSavedSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model=Post
-        fields=['id','title','description','price','year','category','time','date','image','is_donate','author']
+        fields=['id','title','description','price','year','category','time','date','image','is_donate','author','is_sold']
 
     def is_valid_form(self,validate_data):
         self.ValidatePrice(validate_data['price'])
