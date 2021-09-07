@@ -50,8 +50,7 @@ class UsernameRetrieveView(APIView):
             temp['email']=user.email
             temp['city']=user.city
             temp['district']=user.district
-            # temp['password']=user.password
-            # temp['image']=user.image
+            temp['image']=user.image
             data.append(temp)
         return Response(data,status=status.HTTP_200_OK)
 
@@ -98,7 +97,7 @@ class UserLoginView(APIView):
         temp['email']=user.email
         temp['city']=user.city
         temp['district']=user.district
-        # temp['image']=user.image
+        temp['image']=user.image
         return Response( {
             'user':temp,
             'access_token': access_token,

@@ -12,7 +12,7 @@ class Profile(models.Model):
     address=models.CharField(max_length=300,null=True,blank=True)
     pincode=models.IntegerField(null=True,blank=True)
     phone=models.IntegerField(null=True,blank=True)
-    image=models.ImageField(upload_to='static/profile',null=True,blank=True)
+    image=models.TextField(default="",null=True,blank=True)
 
     def __str__(self):
         return '%s' % (self.user_id)
