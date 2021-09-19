@@ -37,10 +37,10 @@ class PostSerializer(serializers.ModelSerializer):
     def ValidateTitle(self,title):
         if title=="":
             raise serializers.ValidationError("Invalid title")
-        if len(title)>2 and len(title)<=50:
+        if len(title)>2 and len(title)<=100:
             return title
         else: 
-            raise serializers.ValidationError("2-50 characters only")
+            raise serializers.ValidationError("2-100 characters only")
 
     def ValidateDescription(self,description):
         if description=="":

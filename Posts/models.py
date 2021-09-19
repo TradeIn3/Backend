@@ -7,17 +7,20 @@ def year_choices():
 
 def current_year():
     return datetime.date.today().year
+    # validation for author
 class Post(models.Model):
-    title = models.CharField(max_length=30,null=False, blank=False,default="")
+    title = models.CharField(max_length=100,null=False, blank=False,default="")
+    author = models.CharField(max_length=100,null=False, blank=False,default="")
     description = models.CharField(max_length=250,null=False, blank=False,default="")
     price=models.IntegerField(null=True,blank=True,default="")
     year = models.IntegerField(('year'), choices=year_choices(), default=current_year())
-    category=models.CharField(max_length=50,choices=(('Furniture','Furniture'),('Electronics & Appliances','Electronics & Appliances'),('Vehicles','Vehicles'),('Clothings','Clothings'),('Handicrafts','Handicrafts'),('Stationary','Stationary'),('Pets','Pets'),('Beauty','Beauty'),('miscellaneous','miscellaneous')),default="")
+    category=models.CharField(max_length=50,choices=(('Furniture','Furniture'),('Electronics & Appliances','Electronics & Appliances'),('Vehicles','Vehicles'),('Clothings','Clothings'),('Stationary','Stationary'),('Pets','Pets'),('Beauty','Beauty'),('miscellaneous','miscellaneous')),default="")
     time=models.TimeField(auto_now=True)
     date=models.DateField(auto_now=True)
     is_donate=models.BooleanField(default=False)
     is_sold=models.BooleanField(default=False)
-    author=models.ForeignKey(Profile, on_delete=models.CASCADE,default="")
+    is_barter=models.BooleanField(default=False)
+    user=models.ForeignKey(Profile, on_delete=models.CASCADE,null=True,blank=True)
     def __str__(self):
         return '%s' % (self.id)
 
@@ -27,7 +30,7 @@ class SavedPost(models.Model):
     post=models.ForeignKey(Post, on_delete=models.CASCADE,null=True,blank=True)
 
     def __str__(self):
-        return '%s %s' %(self.user.user_id,self.post.id)
+        return '%s' %(self.id)
 
 
 class PostImage(models.Model):

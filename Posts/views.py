@@ -56,6 +56,7 @@ class PostEditView(APIView):
     serializer_class=PostSerializer
     # permission_classes=[IsAuthenticated]
     def put(self,request,post_id):
+        post_serializer=PostSerializer(data=request.data)
         try:
             user_data=Profile.objects.get(user_id=request.data['user_id'])
         except Profile.DoesNotExist:
@@ -65,14 +66,14 @@ class PostEditView(APIView):
         except Post.DoesNotExist:
              return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT) 
 
-        post_update_serializer=PostSerializer(post,data=request.data)   
+        post_update_serializer=PostSerializer(post,data=request.data)   ;
 
 
         if post_update_serializer.is_valid() and post_update_serializer.is_valid_form(request.data):
             post_update_serializer.save()
             data=post_serializer.data
             return Response(data,status=status.HTTP_200_OK)
-        return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+        return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
 
 class PostDeleteView(APIView):
     serializer_class=PostSerializer
@@ -171,15 +172,12 @@ class PostRetriveView(APIView):
         user = Profile.objects.filter(user_id=payload['user_id']).first()
         if user is None:
             raise exceptions.AuthenticationFailed('User not found.')
-        city=Profile.objects.get(user_id=payload['user_id']).district
-        users=Profile.objects.filter(city=city)
+        # city=Profile.objects.get(user_id=payload['user_id']).district
+        users=Profile.objects.all()
         sortby=request.GET['sortby']
         category=request.GET['category']
         donation=request.GET['donation']
-        minprice=request.GET['minprice']
-        maxprice=request.GET['maxprice']
-        if minprice>maxprice:
-            return Response("min price should be lesses than max price.",status=status.HTTP_204_NO_CONTENT)
+        
         categories=['Furniture','Electronics & Appliances','Vehicles','Clothings','Handicrafts','Stationary','Pets','Beauty','miscellaneous']
         data=[]
         for user in users:
@@ -250,12 +248,6 @@ class PostRetriveView(APIView):
                     if x.is_donate:
                         tempdata.append(x)
                 data=tempdata
-            if minprice>=0 and maxprice>=0:
-                tempdata=[]
-                for x in data:
-                    if x.price>=minprice and x.price<=maxprice:
-                        tempdata.append(x)
-                data=tempdata        
 
 
 
@@ -309,7 +301,7 @@ class PostSavedView(APIView):
 class PostQuestionView(APIView):
     serializer_class=PostQuestionSerializer
     def post(self,request):
-        post_question_serializer=PostQuestionSerializer(data.request)   
+        post_question_serializer=PostQuestionSerializer(request.data)   
         try:
             user_data=Profile.objects.get(user_id=request.data['user_id'])
         except Profile.DoesNotExist:
@@ -324,7 +316,7 @@ class PostQuestionView(APIView):
         return Response(post_question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self,request):
-        post_question_serializer=PostQuestionSerializer(data.request)
+        post_question_serializer=PostQuestionSerializer(request.data)   
         authorization_header = request.headers.get('Authorization')
         try:
             access_token = authorization_header.split(' ')[1]
@@ -353,6 +345,7 @@ class PostQuestionView(APIView):
         return Response(post_question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self,request):
+        post_question_serializer=PostQuestionSerializer(request.data)   
         try:
             user_data=Profile.objects.get(user_id=request.data['user_id'])
         except Profile.DoesNotExist:

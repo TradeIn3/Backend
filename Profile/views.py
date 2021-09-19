@@ -67,7 +67,7 @@ class UserUpdateView(APIView):
         if profile_update_serializer.is_valid() and profile_update_serializer.is_valid_form(request.data):
             profile_update_serializer.save()
             return Response("updated successfully",status=status.HTTP_200_OK)
-        return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+        return Response("Something went wrong !!", status=status.HTTP_400_BAD_REQUEST) 
 
 
 
@@ -104,6 +104,30 @@ class UserLoginView(APIView):
             'refresh_token': refresh_token,
         },status=status.HTTP_200_OK)
 
+def ValidateUsername(username):
+    if username=="" :
+        return False
+    if len(username) < 8 or len(username) > 30:
+        return False
+    if username[0].isnumeric():
+        return False
+    return True
+
+class ChechUsernameView(APIView):
+    permission_classes = [AllowAny]
+    def get(self,request,username):
+        if (ValidateUsername(username)==False):
+            return Response("Invalid Username",status=status.HTTP_204_NO_CONTENT)
+        
+        user_data=Profile.objects.filter(user_id=username)
+
+        if user_data:
+            return Response("username already exists.",status=status.HTTP_204_NO_CONTENT)
+        else:
+            return Response("Not found.", status=status.HTTP_200_OK)    
+      
+
+
 
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
@@ -126,6 +150,8 @@ class TokenRefreshView(APIView):
                             'access_token': access_token,
                             'refresh_token':refresh_token
                         },status=status.HTTP_200_OK)
+
+
 
 
 
