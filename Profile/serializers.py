@@ -20,15 +20,19 @@ class ProfileSerializer(serializers.ModelSerializer):
         self.ValidateEmail(validate_data['email'])
         self.ValidatePassword(validate_data['password'])
         return True
-
+    # create regex for username firstname lastname
     def ValidateUsername(self,username):
         if username=="" :
              raise serializers.ValidationError("Invalid username")
-        if len(username) < 8 or len(username) > 30:
-            raise serializers.ValidationError("username 8-30 characters are allowed")
+        if len(username) < 3 or len(username) > 30:
+            raise serializers.ValidationError("username 3-30 characters are allowed")
         if username[0].isnumeric():
             raise serializers.ValidationError("can't start with a number")   
-        return username
+        pattern=re.compile(r"[A-Za-z0-9_]+$")
+        if re.fullmatch(pattern, username):
+            return username
+        else:
+            raise serializers.ValidationError("Invalid username")
 
     def ValidateFirstName(self,name):
         if name=="" :

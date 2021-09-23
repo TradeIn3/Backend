@@ -10,6 +10,7 @@ import datetime
 import jwt
 from django.conf import settings
 from rest_framework import exceptions
+from Posts.models import Post
 
 
 
@@ -20,18 +21,18 @@ class UserProfileCreateView(APIView):
         profile_data=Profile.objects.all()
         profile_serializer=ProfileSerializer(data=request.data)
         user=self.request.user
-        user_data=Profile.objects.get(user_id==request.data['user_id'])
+        user_data=Profile.objects.get(user_id=request.data['user_id'])
         if user_data:
             return Response("user already exits", status=status.HTTP_204_NO_CONTENT)
         if profile_serializer.is_valid() and profile_serializer.is_valid_form(request.data):
             profile_serializer.save()
             access_token = generate_access_token(user)
-        refresh_token = generate_refresh_token(user)
-        return Response({
-                            'user':profile_serializer.data,
-                            'access_token': access_token,
-                            'refresh_token':refresh_token
-                        },status=status.HTTP_201_CREATED)
+            refresh_token = generate_refresh_token(user)
+            return Response({
+                                'user':profile_serializer.data,
+                                'access_token': access_token,
+                                'refresh_token':refresh_token
+                            },status=status.HTTP_201_CREATED)
         return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
 
 class UsernameRetrieveView(APIView):
@@ -41,7 +42,7 @@ class UsernameRetrieveView(APIView):
         data=[]
         for user in user_data:
             temp={}
-            temp['user_id']=user.user_id
+            temp['username']=user.user_id
             temp['first_name']=user.first_name
             temp['last_name']=user.last_name
             temp['address']=user.address
@@ -69,7 +70,44 @@ class UserUpdateView(APIView):
             return Response("updated successfully",status=status.HTTP_200_OK)
         return Response("Something went wrong !!", status=status.HTTP_400_BAD_REQUEST) 
 
+class GetMyDetailsView(APIView):
+    permission_classes = [AllowAny]
+    def get(self,request):
+        authorization_header = request.headers.get('Authorization')
+        if authorization_header == None:
+            raise exceptions.AuthenticationFailed('Authentication credentials were not provided.')
+        try:
+            access_token = authorization_header.split(' ')[1]
+            payload = jwt.decode(
+                access_token, settings.SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            raise exceptions.AuthenticationFailed('access_token expired.')
+        except IndexError:
+            raise exceptions.AuthenticationFailed('Token prefix missing.')
 
+        user = Profile.objects.get(user_id=payload['user_id'])
+        if user is None:
+            raise exceptions.AuthenticationFailed('User not found.')
+        post_count=Post.objects.filter(user=payload['user_id'],is_donate=False,is_barter=False).count()
+        donate_count=Post.objects.filter(user=payload['user_id'],is_donate=True,is_barter=False).count()
+        barter_count=Post.objects.filter(user=payload['user_id'],is_donate=False,is_barter=True).count()
+        print(user);
+        temp={}
+        temp['username']=user.user_id
+        temp['first_name']=user.first_name
+        temp['last_name']=user.last_name
+        temp['address']=user.address
+        temp['phone']=user.phone
+        temp['pincode']=user.pincode
+        temp['email']=user.email
+        temp['city']=user.city
+        temp['district']=user.district
+        temp['image']=user.image
+        temp['barter_count']=barter_count
+        temp['post_count']=post_count
+        temp['donate_count']=donate_count
+        return Response(temp,status=status.HTTP_200_OK)    
+       
 
 class UserLoginView(APIView):
     serializer_class=UserSerializer
@@ -86,20 +124,7 @@ class UserLoginView(APIView):
         serialized_user = UserSerializer(user).data
         access_token = generate_access_token(user)
         refresh_token = generate_refresh_token(user)
-        
-        temp={}
-        temp['user_id']=user.user_id
-        temp['first_name']=user.first_name
-        temp['last_name']=user.last_name
-        temp['address']=user.address
-        temp['phone']=user.phone
-        temp['pincode']=user.pincode
-        temp['email']=user.email
-        temp['city']=user.city
-        temp['district']=user.district
-        temp['image']=user.image
         return Response( {
-            'user':temp,
             'access_token': access_token,
             'refresh_token': refresh_token,
         },status=status.HTTP_200_OK)
@@ -173,7 +198,7 @@ def generate_refresh_token(user):
     refresh_token_payload = {
         'token_type':'refresh',
         'user_id': user.user_id,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7),
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=14),
         'iat': datetime.datetime.utcnow()
     }
     refresh_token = jwt.encode(
