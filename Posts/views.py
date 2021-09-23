@@ -43,7 +43,7 @@ class PostCreateView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self,request):
         post_serializer=PostSerializer(data=request.data)
-        user=Profile.object.filter(user_id=request.data['author'])
+        user=Profile.object.filter(user_id=request.data['user'])
         if(user.city=="" or user.district=="" or user.address=="" or user.pincode=="" or user.phone==""):
             return Response("please complete your details",status=status.HTTP_204_NO_CONTENT)
         if post_serializer.is_valid() and post_serializer.is_valid_form(request.data):
@@ -58,11 +58,11 @@ class PostEditView(APIView):
     def put(self,request,post_id):
         post_serializer=PostSerializer(data=request.data)
         try:
-            user_data=Profile.objects.get(user_id=request.data['user_id'])
+            user_data=Profile.objects.get(user_id=request.data['username'])
         except Profile.DoesNotExist:
             return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT)  
         try:
-            post=Post.objects.get(author=request.data['user_id'],id=post_id)   
+            post=Post.objects.get(author=request.data['username'],id=post_id)   
         except Post.DoesNotExist:
              return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT) 
 
@@ -79,19 +79,19 @@ class PostDeleteView(APIView):
     serializer_class=PostSerializer
     permission_classes=[AllowAny]
     def delete(self,request):
-        user_id=request.GET['user_id']
+        user_id=request.GET['username']
         post_id=request.GET['post_id']
         try:
             user_data=Profile.objects.get(user_id=user_id)
         except Profile.DoesNotExist:
             return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT)  
         try:
-            post=Post.objects.get(author=user_id,id=post_id)   
+            post=Post.objects.get(user=user_id,id=post_id)   
         except Post.DoesNotExist:
             return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
 
         try:
-            Post.objects.filter(author=user_id,id=post_id).delete()
+            Post.objects.filter(user=user_id,id=post_id).delete()
             return Response("post deleted successfully.",status=status.HTTP_200_OK)
         except:
             return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
@@ -115,7 +115,7 @@ class PostUserRetriveView(APIView):
         if user is None:
             raise exceptions.AuthenticationFailed('User not found.')
 
-        posts=Post.objects.filter(author=payload['user_id'])
+        posts=Post.objects.filter(user=payload['user_id'])
         data=[]
         for post in posts:
             temp={}
@@ -143,6 +143,7 @@ class PostUserRetriveView(APIView):
             # 
             save=SavedPost.objects.filter(post=post.id,user=payload['user_id'])
             temp['title']=post.title
+            temp['author']=post.author
             temp['description']=post.description
             temp['year']=post.year
             temp['id']=post.id
@@ -151,6 +152,7 @@ class PostUserRetriveView(APIView):
             temp['category']=post.category
             temp['timesince']=timesince_calulate(post.date,post.time)
             temp['is_donate']=post.is_donate
+            temp['is_barter']=post.is_barter
             temp['is_saved']=(save!=None)
             temp['images']=post_images
             temp['questions']=questions
@@ -195,7 +197,7 @@ class PostRetriveView(APIView):
                 images=PostImage.objects.filter(post=post.id)
                 for img in images:
                     post_images.append(img.image)
-                for que in question:
+                for que in questions:
                     answered_timesince=""
                     if(que.is_answered):
                         if(que.answered_date=="" or que.answered_time=="" or que.answer==""):
@@ -227,7 +229,7 @@ class PostRetriveView(APIView):
                 temp['pincode']=user.pincode
                 temp['email']=user.email
                 temp['city']=user.city
-                remp['is_sold']=post.is_sold
+                temp['is_sold']=post.is_sold
                 temp['district']=user.district
                 temp['is_owner']=(user.user_id==payload['user_id'])
                 temp['is_saved']=(save!=None)
@@ -303,7 +305,7 @@ class PostQuestionView(APIView):
     def post(self,request):
         post_question_serializer=PostQuestionSerializer(request.data)   
         try:
-            user_data=Profile.objects.get(user_id=request.data['user_id'])
+            user_data=Profile.objects.get(user_id=request.data['username'])
         except Profile.DoesNotExist:
             return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT) 
         try:
@@ -347,7 +349,7 @@ class PostQuestionView(APIView):
     def delete(self,request):
         post_question_serializer=PostQuestionSerializer(request.data)   
         try:
-            user_data=Profile.objects.get(user_id=request.data['user_id'])
+            user_data=Profile.objects.get(user_id=request.data['username'])
         except Profile.DoesNotExist:
             return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT) 
         try:
@@ -355,7 +357,7 @@ class PostQuestionView(APIView):
         except Post.DoesNotExist:
             return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
         try:
-            question=PostQuestion.objects.get(id=request.data['question_id'],user=request.data['user_id'])   
+            question=PostQuestion.objects.get(id=request.data['question_id'],user=request.data['username'])   
         except PostQuestion.DoesNotExist:
             return Response("question doesn't exists",status=status.HTTP_204_NO_CONTENT)    
         if post_question_serializer.is_valid() :
