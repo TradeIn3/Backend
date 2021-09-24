@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import generics
 import datetime
+import json
 import jwt
 from django.conf import settings
 from rest_framework import exceptions
@@ -71,10 +72,11 @@ class UserUpdateView(APIView):
         return Response("Something went wrong !!", status=status.HTTP_400_BAD_REQUEST) 
 
 class GetMyDetailsView(APIView):
-    permission_classes = [AllowAny]
+
     def get(self,request):
         authorization_header = request.headers.get('Authorization')
         if authorization_header == None:
+            print("why?")
             raise exceptions.AuthenticationFailed('Authentication credentials were not provided.')
         try:
             access_token = authorization_header.split(' ')[1]
@@ -190,7 +192,6 @@ def generate_access_token(user):
     }
     access_token = jwt.encode(access_token_payload,
                               settings.SECRET_KEY, algorithm='HS256')
-    print(access_token)
     return access_token
 
 
