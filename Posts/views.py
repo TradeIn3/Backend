@@ -13,12 +13,9 @@ from django.conf import settings
 from rest_framework import exceptions
 from datetime import date,datetime,timezone
 import time
-import environ
 import razorpay
 import os
 import json
-env = environ.Env()
-environ.Env.read_env()
 
 def timesince_calulate(date,time):
     timesince=""
