@@ -51,3 +51,24 @@ class PostQuestion(models.Model):
     answer=models.TextField(default="",null=True,blank=True)
     def __str__(self):
         return '%s' %(self.id)
+
+
+class Order(models.Model):
+    order_product = models.ForeignKey(Post, on_delete=models.CASCADE,null=True,blank=True)
+    user=models.ForeignKey(Profile, on_delete=models.CASCADE,null=True,blank=True)
+    order_amount = models.CharField(max_length=25)
+    order_payment_id = models.CharField(max_length=100)
+    isPaid = models.BooleanField(default=False)
+    order_date = models.DateTimeField(auto_now=True)
+    def __str__(self):
+        return self.order_product
+
+class Reserved(models.Model):
+    reserve_product = models.ForeignKey(Post, on_delete=models.CASCADE,null=True,blank=True)
+    user=models.ForeignKey(Profile, on_delete=models.CASCADE,null=True,blank=True)
+    reserve_amount = models.CharField(max_length=25)
+    isReserved = models.BooleanField(default=False)
+    reserve_date = models.DateTimeField(auto_now=True)
+    reserve_payment_id = models.CharField(max_length=100)
+    def __str__(self):
+       return '%s' % (self.id)

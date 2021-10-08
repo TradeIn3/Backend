@@ -10,4 +10,8 @@ urlpatterns = [
    path('user/city/retrieve/',views.PostRetriveView.as_view(),name="postusercity"),
    path('saved/',views.PostSavedView.as_view(),name="postsaved"),
    path('question/',views.PostQuestionView.as_view(),name="postaskquestion"),
+   path('productpay/', views.StartProductPayment.as_view(), name="payment"),
+   # path('productpayment/success/', views.HandleProductPaymentSuccess.as_view(), name="payment_success"),
+   path('reservepay/', views.StartReservedPayment.as_view(), name="payment"),
+   # path('reservepayment/success/', views.HandleReservedPaymentSuccess.as_view(), name="payment_success")
 ]

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, SavedPost,PostQuestion
+from .models import Post, SavedPost, PostQuestion, Order, Reserved
 import re
 class PostQuestionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,3 +49,20 @@ class PostSerializer(serializers.ModelSerializer):
             return description
         else: 
             raise serializers.ValidationError("5-250 characters only")        
+
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    order_date = serializers.DateTimeField(format="%d %B %Y %I:%M %p")
+
+    class Meta:
+        model = Order
+        fields = '__all__'
+        depth = 2
+
+class ReservedSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Reserved
+        fields = '__all__'
+        depth = 2        

@@ -1,7 +1,7 @@
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Post, SavedPost, PostImage, PostQuestion
+from .models import Post, SavedPost, PostImage, PostQuestion, Order, Reserved
 from Profile.models import Profile
-from .serializers import PostSerializer,PostSavedSerializer,PostQuestionSerializer
+from .serializers import PostSerializer,PostSavedSerializer,PostQuestionSerializer,OrderSerializer,ReservedSerializer
 from django.http import Http404
 from rest_framework import serializers, viewsets, status
 from rest_framework.response import Response
@@ -13,6 +13,12 @@ from django.conf import settings
 from rest_framework import exceptions
 from datetime import date,datetime,timezone
 import time
+import environ
+import razorpay
+import os
+import json
+env = environ.Env()
+environ.Env.read_env()
 
 def timesince_calulate(date,time):
     timesince=""
@@ -184,12 +190,13 @@ class PostRetriveView(APIView):
         data=[]
         for user in users:
             post=None
-            if category!="":
+            if category != "null":
                 if category not in categories:
                     return Response("Invalid Category",status=status.HTTP_204_NO_CONTENT)
-                posts=Post.objects.filter(author=user.user_id,category=category,is_sold=false)
+                posts=Post.objects.filter(user=user.user_id,category=category,is_sold=False)
             else:
-                posts=Post.objects.filter(author=user.user_id,is_sold=false)    
+                posts=Post.objects.filter(user=user.user_id,is_sold=False)    
+            
             for post in posts:
                 save=SavedPost.objects.filter(post=post.id,user=payload['user_id'])
                 post_images=[]
@@ -203,15 +210,15 @@ class PostRetriveView(APIView):
                         if(que.answered_date=="" or que.answered_time=="" or que.answer==""):
                             return Response("Invalid data",status=status.HTTP_400_BAD_REQUEST)
                         answered_timesince= timesince_calulate(que.answered_date,que.answered_time) 
-                obj={}
-                obj['id']=que.id
-                obj['question']=que.question
-                obj['timesince']=timesince_calulate(que.date,que.time)
-                obj['user_id']=que.user.user_id
-                obj['is_answered']=que.is_answered
-                obj['answered_timesince']=answered_timesince
-                obj['answer']=que.answer
-                questions.append(obj)
+                    obj={}
+                    obj['id']=que.id
+                    obj['question']=que.question
+                    obj['timesince']=timesince_calulate(que.date,que.time)
+                    obj['user_id']=que.user.user_id
+                    obj['is_answered']=que.is_answered
+                    obj['answered_timesince']=answered_timesince
+                    obj['answer']=que.answer
+                    questions.append(obj)
                 temp={}
                 temp['title']=post.title
                 temp['description']=post.description
@@ -237,9 +244,9 @@ class PostRetriveView(APIView):
                 temp['questions']=questions
                 data.append(temp)
         if category in categories:
-            if filter=="high":
+            if sortby=="high":
                 data.sort(key=lambda x:x.price,reverse=True)
-            elif filter=="low":
+            elif sortby=="low":
                 data.sort(key=lambda x:x.price)
             else:
                 data.sort(key=lambda x:x.id)
@@ -252,7 +259,7 @@ class PostRetriveView(APIView):
                 data=tempdata
 
 
-
+        
         return Response(data,status=status.HTTP_200_OK)
 
 
@@ -364,3 +371,223 @@ class PostQuestionView(APIView):
             post_question_serializer.save()
             return Response("question created",status=status.HTTP_201_CREATED)
         return Response(post_question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# {
+# "amount":1,
+# "username":"Rohit@0301",
+# "reserve_product":"1"
+# }
+
+
+class StartReservedPayment(APIView):
+    permission_classes = [AllowAny]
+    def post(self,request):
+        # request.data is coming from frontend
+        amount = request.data['amount']
+        username = request.data['username']
+        reserve_product = request.data['reserve_product']
+
+        user = Profile.objects.get(user_id=username)
+        post = Post.objects.get(id=reserve_product)
+
+        if(user==None or post==None):
+            return Response("Something went wrong")
+        # setup razorpay client
+        client = razorpay.Client(auth=(os.environ.get("RAZORPAY_PUBLIC_KEY"), os.environ.get("RAZORPAY_SECRET_KEY")))
+
+        # create razorpay order
+        payment = client.order.create({"amount": int(amount), 
+                                    "currency": "INR", 
+                                    "payment_capture": "1"})
+        # we are saving an order with isReserved=False
+        reserve = Reserved.objects.create(
+                                    reserve_product=post,
+                                    user=user,
+                                    reserve_amount=amount, 
+                                    reserve_payment_id=payment['id'])
+
+        serializer = ReservedSerializer(reserve)
+
+        """order response will be 
+        {'id': 17, 
+        'order_date': '23 January 2021 03:28 PM', 
+        'order_product': '**product name from frontend**', 
+        'order_amount': '**product amount from frontend**', 
+        'order_payment_id': 'order_G3NhfSWWh5UfjQ', # it will be unique everytime
+        'isPaid': False}"""
+
+        data = {
+            "payment": payment,
+            "order": serializer.data
+        }
+        return Response(data,status=status.HTTP_200_OK)
+
+
+class HandleReservedPaymentSuccess(APIView):
+    def post(self,request):
+        res = json.loads(request.data["response"])
+
+        """res will be:
+        {'razorpay_payment_id': 'pay_G3NivgSZLx7I9e', 
+        'razorpay_order_id': 'order_G3NhfSWWh5UfjQ', 
+        'razorpay_signature': '76b2accbefde6cd2392b5fbf098ebcbd4cb4ef8b78d62aa5cce553b2014993c0'}
+        """
+
+        ord_id = ""
+        raz_pay_id = ""
+        raz_signature = ""
+
+        # res.keys() will give us list of keys in res
+        for key in res.keys():
+            if key == 'razorpay_order_id':
+                ord_id = res[key]
+            elif key == 'razorpay_payment_id':
+                raz_pay_id = res[key]
+            elif key == 'razorpay_signature':
+                raz_signature = res[key]
+
+        # get order by payment_id which we've created earlier with isPaid=False
+        reserve = Reserved.objects.get(reserve_payment_id=ord_id)
+
+        data = {
+            'razorpay_order_id': ord_id,
+            'razorpay_payment_id': raz_pay_id,
+            'razorpay_signature': raz_signature
+        }
+
+        client = razorpay.Client(auth=(os.environ.get("RAZORPAY_PUBLIC_KEY"), os.environ.get("RAZORPAY_SECRET_KEY")))
+
+        # checking if the transaction is valid or not if it is "valid" then check will return None
+        check = client.utility.verify_payment_signature(data)
+
+        if check is not None:
+            return Response('Something went wrong',status=status.HTTP_400_BAD_REQUEST)
+
+        # if payment is successful that means check is None then we will turn isPaid=True
+        reserve.isReserved = True
+        reserve.save()
+
+     
+
+        return Response("Successfull payment",status=status.HTTP_200_OK)
+
+
+class StartProductPayment(APIView):
+    def post(request):
+        # request.data is coming from frontend
+        amount = request.data['amount']
+        username = request.data['username']
+        order_product = request.data['order_product']
+
+        user = Profile.objects.get(user_id=username)
+        post = Post.objects.get(id=order_product, price=amount)
+        reserve =Reserved.object.get(reserve_product=order_product)
+        if(reserve):
+            pass
+        if(user==None or post==None):
+            return Response("Something went wrong")
+        # setup razorpay client
+        client = razorpay.Client(auth=(os.environ.get("RAZORPAY_PUBLIC_KEY"), os.environ.get("RAZORPAY_SECRET_KEY")))
+
+        # create razorpay order
+        payment = client.order.create({"amount": int(amount), 
+                                    "currency": "INR", 
+                                    "payment_capture": "1"})
+
+        # we are saving an order with isPaid=False
+        order = Order.objects.create(order_product=post,
+                                    user=user,
+                                    order_amount=amount, 
+                                    order_payment_id=payment['id'])
+
+        serializer = OrderSerializer(order)
+
+        """order response will be 
+        {'id': 17, 
+        'order_date': '23 January 2021 03:28 PM', 
+        'order_product': '**product name from frontend**', 
+        'order_amount': '**product amount from frontend**', 
+        'order_payment_id': 'order_G3NhfSWWh5UfjQ', # it will be unique everytime
+        'isPaid': False}"""
+
+        data = {
+            "payment": payment,
+            "order": serializer.data
+        }
+        return Response(data,status=status.HTTP_200_OK)
+
+
+
+class HandleProductPaymentSuccess(APIView):
+    def post(self,request):
+        res = json.loads(request.data["response"])
+
+        """res will be:
+        {'razorpay_payment_id': 'pay_G3NivgSZLx7I9e', 
+        'razorpay_order_id': 'order_G3NhfSWWh5UfjQ', 
+        'razorpay_signature': '76b2accbefde6cd2392b5fbf098ebcbd4cb4ef8b78d62aa5cce553b2014993c0'}
+        """
+
+        ord_id = ""
+        raz_pay_id = ""
+        raz_signature = ""
+
+        # res.keys() will give us list of keys in res
+        for key in res.keys():
+            if key == 'razorpay_order_id':
+                ord_id = res[key]
+            elif key == 'razorpay_payment_id':
+                raz_pay_id = res[key]
+            elif key == 'razorpay_signature':
+                raz_signature = res[key]
+
+        # get order by payment_id which we've created earlier with isPaid=False
+        order = Order.objects.get(order_payment_id=ord_id)
+
+        data = {
+            'razorpay_order_id': ord_id,
+            'razorpay_payment_id': raz_pay_id,
+            'razorpay_signature': raz_signature
+        }
+
+        client = razorpay.Client(auth=(os.environ.get("RAZORPAY_PUBLIC_KEY"), os.environ.get("RAZORPAY_SECRET_KEY")))
+
+        # checking if the transaction is valid or not if it is "valid" then check will return None
+        check = client.utility.verify_payment_signature(data)
+
+        if check is not None:
+            return Response('Something went wrong',status=status.HTTP_400_BAD_REQUEST)
+
+        # if payment is successful that means check is None then we will turn isPaid=True
+        order.isReserved = True
+        order.save()
+
+     
+
+        return Response("Successfull payment",status=status.HTTP_200_OK)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Product_categories = {
+#     'Electronics':['Laptops','Power Banks','Pen drives & Storage','Tablets','Computer & Accessories','Headphones & earphones','Speakers','Camera & accessories','Gaming accessories'],
+#     'Mobile':['Mobile','Mobile Accessories'],
+#     'Appliances':['Televisions','Kitches Appliances','Air conditioners','Refrigerators','Washing machine','Microwaves','Chimneys','Dishwashers','Cooler'],
+#     "Men's Fashion":['Clothing','Footware','Watches','Bags','Wallets','Luggage','Sunglasses','Accessories'],
+#     "Women's Fashion":['Clothing','Footware','Watches','Fashion & Jewellery','Hanbags & clutches','Sunglasses'],
+#     "Home":['kitchen & appliances','Furniture','Home Decor','Indoor Lighting','Art & Crafts','Garden & Outdoors'],
+#     "Sports & Fitness":['Cycle','Exercies & Fitness','Sports accessories'],
+#     "Baby Products":["Clothing","Footware","School bags","Toys and Games"],
+#     "Vehicles":['Two wheelers & accessories','Four wheelers & accessories','others'],
+#     "Others":['Stationary Products','Arts & Handicrafts','Beauty'],
+# } 
