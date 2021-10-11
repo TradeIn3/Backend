@@ -11,11 +11,12 @@ import datetime
 import jwt
 from django.conf import settings
 from rest_framework import exceptions
-from datetime import date,datetime,timezone
+from datetime import date,datetime, timedelta,timezone
 import time
 import razorpay
 import os
 import json
+from django.utils import timezone
 
 def timesince_calulate(date,time):
     timesince=""
@@ -148,7 +149,7 @@ class PostUserRetriveView(APIView):
             temp['title']=post.title
             temp['author']=post.author
             temp['description']=post.description
-            temp['year']=post.year
+            # temp['year']=post.year
             temp['id']=post.id
             temp['is_sold']=post.is_sold
             temp['price']=post.id
@@ -161,6 +162,81 @@ class PostUserRetriveView(APIView):
             temp['questions']=questions
             data.append(temp) 
         return Response(data,status=status.HTTP_200_OK)
+
+class SinglePostRetriveView(APIView):
+    permission_classes=[AllowAny]
+    serializer_class=PostSerializer
+    def get(self,request):
+        authorization_header = request.headers.get('Authorization')
+        payload = None
+        if authorization_header:
+            access_token = authorization_header.split(' ')[1]
+            payload = jwt.decode(
+            access_token, settings.SECRET_KEY, algorithms=['HS256'])
+        
+
+
+        post_id=request.GET['id']
+        post = Post.objects.get(id=post_id)
+        
+        is_owner = False
+        if payload:
+            if payload['user_id'] == post.user_id:
+                is_owner = True
+        user = Profile.objects.get(user_id=post.user)
+        save=SavedPost.objects.filter(post=post_id)
+        post_images=[]
+        questions=[]
+        data={}
+        images=PostImage.objects.filter(post=post_id)
+        for img in images:
+            post_images.append(img.image)
+        for que in questions:
+            answered_timesince=""
+            if(que.is_answered):
+                if(que.answered_date=="" or que.answered_time=="" or que.answer==""):
+                    return Response("Invalid data",status=status.HTTP_400_BAD_REQUEST)
+                answered_timesince= timesince_calulate(que.answered_date,que.answered_time) 
+                obj={}
+                obj['id']=que.id
+                obj['question']=que.question
+                obj['timesince']=timesince_calulate(que.date,que.time)
+                obj['user_id']=que.user.user_id
+                obj['is_answered']=que.is_answered
+                obj['answered_timesince']=answered_timesince
+                obj['answer']=que.answer
+                questions.append(obj)
+           
+        data['title']=post.title
+        data['description']=post.description
+        data['condition']=post.condition
+        data['id']=post.id
+        data['price']=post.id
+        data['category']=post.category
+        data['date']=post.date
+        data['is_donate']=post.is_donate
+        data['user_id']=user.user_id
+        data['first_name']=user.first_name
+        data['last_name']=user.last_name
+        data['brand']=post.brand
+        data['address']=user.address
+        data['phone']=user.phone
+        data['pincode']=user.pincode
+        data['email']=user.email
+        data['city']=user.city
+        data['is_sold']=post.is_sold
+        data['is_barter']=post.is_barter
+        data['is_donate']=post.is_donate
+        data['district']=user.district
+        data['is_owner']=is_owner
+        data['is_saved']=(save!=None)
+        data['images']=post_images
+        data['questions']=questions
+
+        
+        return Response(data,status=status.HTTP_200_OK)
+
+
 
 class PostRetriveView(APIView):
     def get(self,request):
@@ -219,7 +295,7 @@ class PostRetriveView(APIView):
                 temp={}
                 temp['title']=post.title
                 temp['description']=post.description
-                temp['year']=post.year
+                # temp['year']=post.year
                 temp['id']=post.id
                 temp['price']=post.id
                 temp['category']=post.category
@@ -258,6 +334,7 @@ class PostRetriveView(APIView):
 
         
         return Response(data,status=status.HTTP_200_OK)
+
 
 
 class PostSavedView(APIView):
@@ -369,12 +446,6 @@ class PostQuestionView(APIView):
             return Response("question created",status=status.HTTP_201_CREATED)
         return Response(post_question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# {
-# "amount":1,
-# "username":"Rohit@0301",
-# "reserve_product":"1"
-# }
-
 
 class StartReservedPayment(APIView):
     permission_classes = [AllowAny]
@@ -382,28 +453,22 @@ class StartReservedPayment(APIView):
         # request.data is coming from frontend
         amount = request.data['amount']
         username = request.data['username']
-        reserve_product = request.data['reserve_product']
+        order_product = request.data['order_product']
 
         user = Profile.objects.get(user_id=username)
-        post = Post.objects.get(id=reserve_product)
+        post = Post.objects.get(id=order_product, price=amount)
 
         if(user==None or post==None):
-            return Response("Something went wrong")
+            return Response("Something went wrong", status=status.HTTP_404_NOT_FOUND)
+        
         # setup razorpay client
         client = razorpay.Client(auth=(os.environ.get("RAZORPAY_PUBLIC_KEY"), os.environ.get("RAZORPAY_SECRET_KEY")))
-
         # create razorpay order
-        payment = client.order.create({"amount": int(amount), 
+        payment = client.order.create({"amount": int(amount)*100, 
                                     "currency": "INR", 
-                                    "payment_capture": "1"})
+                                    "payment_capture": "1"})                   
         # we are saving an order with isReserved=False
-        reserve = Reserved.objects.create(
-                                    reserve_product=post,
-                                    user=user,
-                                    reserve_amount=amount, 
-                                    reserve_payment_id=payment['id'])
-
-        serializer = ReservedSerializer(reserve)
+        
 
         """order response will be 
         {'id': 17, 
@@ -415,15 +480,15 @@ class StartReservedPayment(APIView):
 
         data = {
             "payment": payment,
-            "order": serializer.data
+            # "order": serializer.data
         }
         return Response(data,status=status.HTTP_200_OK)
 
 
 class HandleReservedPaymentSuccess(APIView):
     def post(self,request):
-        res = json.loads(request.data["response"])
-
+        res = request.data["response"]
+        data = request.data["data"]
         """res will be:
         {'razorpay_payment_id': 'pay_G3NivgSZLx7I9e', 
         'razorpay_order_id': 'order_G3NhfSWWh5UfjQ', 
@@ -442,9 +507,28 @@ class HandleReservedPaymentSuccess(APIView):
                 raz_pay_id = res[key]
             elif key == 'razorpay_signature':
                 raz_signature = res[key]
+                
+        user = Profile.objects.get(user_id=data['username'])
+        post = Post.objects.get(id=data['reserve_product'])
 
-        # get order by payment_id which we've created earlier with isPaid=False
-        reserve = Reserved.objects.get(reserve_payment_id=ord_id)
+        if(user==None or post==None):
+            return Response("Something went wrong")
+
+        checkprev = Reserved.objects.filter(reserve_product=post,user=user)
+        if checkprev:
+            print(checkprev)
+            expire_date = checkprev[0].expire_date
+            print(timezone.now())
+            print(expire_date)
+            if expire_date < timezone.now():
+                Reserved.objects.filter(reserve_product=post,user=user).delete()
+            else :
+                return Response("Already Reserved",status=status.HTTP_204_NO_CONTENT)    
+        reserve = Reserved.objects.create(reserve_product=post,
+                                    user=user,
+                                    isReserved=True,
+                                    reserve_amount=data['amount'], 
+                                    reserve_payment_id=request.data["payment_id"])
 
         data = {
             'razorpay_order_id': ord_id,
@@ -461,8 +545,7 @@ class HandleReservedPaymentSuccess(APIView):
             return Response('Something went wrong',status=status.HTTP_400_BAD_REQUEST)
 
         # if payment is successful that means check is None then we will turn isPaid=True
-        reserve.isReserved = True
-        reserve.save()
+        serializer = ReservedSerializer(reserve)
 
      
 
@@ -470,34 +553,28 @@ class HandleReservedPaymentSuccess(APIView):
 
 
 class StartProductPayment(APIView):
-    def post(request):
+    def post(self,request):
         # request.data is coming from frontend
         amount = request.data['amount']
         username = request.data['username']
         order_product = request.data['order_product']
 
-        user = Profile.objects.get(user_id=username)
-        post = Post.objects.get(id=order_product, price=amount)
-        reserve =Reserved.object.get(reserve_product=order_product)
+        user = Profile.objects.filter(user_id=username)
+        post = Post.objects.filter(id=order_product, price=amount)
+
+        reserve =Reserved.objects.get(reserve_product=order_product)
         if(reserve):
-            pass
+            amount = amount - 10
         if(user==None or post==None):
-            return Response("Something went wrong")
+            return Response("Something went wrong", status=status.HTTP_404_NOT_FOUND)
         # setup razorpay client
         client = razorpay.Client(auth=(os.environ.get("RAZORPAY_PUBLIC_KEY"), os.environ.get("RAZORPAY_SECRET_KEY")))
 
         # create razorpay order
-        payment = client.order.create({"amount": int(amount), 
+        payment = client.order.create({"amount": int(amount)*100, 
                                     "currency": "INR", 
                                     "payment_capture": "1"})
 
-        # we are saving an order with isPaid=False
-        order = Order.objects.create(order_product=post,
-                                    user=user,
-                                    order_amount=amount, 
-                                    order_payment_id=payment['id'])
-
-        serializer = OrderSerializer(order)
 
         """order response will be 
         {'id': 17, 
@@ -509,7 +586,6 @@ class StartProductPayment(APIView):
 
         data = {
             "payment": payment,
-            "order": serializer.data
         }
         return Response(data,status=status.HTTP_200_OK)
 
@@ -517,8 +593,8 @@ class StartProductPayment(APIView):
 
 class HandleProductPaymentSuccess(APIView):
     def post(self,request):
-        res = json.loads(request.data["response"])
-
+        res = request.data["response"]
+        data = request.data["data"]
         """res will be:
         {'razorpay_payment_id': 'pay_G3NivgSZLx7I9e', 
         'razorpay_order_id': 'order_G3NhfSWWh5UfjQ', 
@@ -539,13 +615,22 @@ class HandleProductPaymentSuccess(APIView):
                 raz_signature = res[key]
 
         # get order by payment_id which we've created earlier with isPaid=False
-        order = Order.objects.get(order_payment_id=ord_id)
+        user = Profile.objects.get(user_id=data['username'])
+        post = Post.objects.get(id=data['order_product'])
 
+        if(user==None or post==None):
+            return Response("Something went wrong")
+        order = Order.objects.create(order_product=post,
+                                    user=user,
+                                    order_amount=data['amount'], 
+                                    order_payment_id=request.data["payment_id"])
         data = {
             'razorpay_order_id': ord_id,
             'razorpay_payment_id': raz_pay_id,
             'razorpay_signature': raz_signature
         }
+        
+       
 
         client = razorpay.Client(auth=(os.environ.get("RAZORPAY_PUBLIC_KEY"), os.environ.get("RAZORPAY_SECRET_KEY")))
 
@@ -556,8 +641,8 @@ class HandleProductPaymentSuccess(APIView):
             return Response('Something went wrong',status=status.HTTP_400_BAD_REQUEST)
 
         # if payment is successful that means check is None then we will turn isPaid=True
-        order.isReserved = True
-        order.save()
+        serializer = OrderSerializer(order)
+
 
      
 

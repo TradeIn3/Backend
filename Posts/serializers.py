@@ -13,7 +13,7 @@ class PostSavedSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model=Post
-        fields=['id','title','description','price','year','category','time','date','image','is_donate','author','is_sold']
+        fields=['id','title','description','price','year','category','time','date','image','is_donate','is_donate','brand','author','user','is_sold']
 
     def is_valid_form(self,validate_data):
         self.ValidatePrice(validate_data['price'])
@@ -61,7 +61,6 @@ class OrderSerializer(serializers.ModelSerializer):
         depth = 2
 
 class ReservedSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Reserved
         fields = '__all__'

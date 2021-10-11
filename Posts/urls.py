@@ -7,11 +7,12 @@ urlpatterns = [
    path('edit/<int:post_id>/',views.PostEditView.as_view(),name="editpost"),
    path('delete/',views.PostDeleteView.as_view(),name="postdelete"),
    path('user/retrieve/',views.PostUserRetriveView.as_view(),name="postuser"),
-   path('user/city/retrieve/',views.PostRetriveView.as_view(),name="postusercity"),
+   path('all/retrieve/',views.PostRetriveView.as_view(),name="allpost"),
+   path('single/retrieve/',views.SinglePostRetriveView.as_view(),name="singlepost"),
    path('saved/',views.PostSavedView.as_view(),name="postsaved"),
    path('question/',views.PostQuestionView.as_view(),name="postaskquestion"),
    path('productpay/', views.StartProductPayment.as_view(), name="payment"),
-   # path('productpayment/success/', views.HandleProductPaymentSuccess.as_view(), name="payment_success"),
+   path('productpayment/success/', views.HandleProductPaymentSuccess.as_view(), name="payment_success"),
    path('reservepay/', views.StartReservedPayment.as_view(), name="payment"),
-   # path('reservepayment/success/', views.HandleReservedPaymentSuccess.as_view(), name="payment_success")
+   path('reservepayment/success/', views.HandleReservedPaymentSuccess.as_view(), name="payment_success")
 ]
