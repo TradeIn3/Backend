@@ -184,28 +184,27 @@ class SinglePostRetriveView(APIView):
             if payload['user_id'] == post.user_id:
                 is_owner = True
         user = Profile.objects.get(user_id=post.user)
-        save=SavedPost.objects.filter(post=post_id)
+        save =None
+        try:
+            save=SavedPost.objects.get(post=post_id,user=post.user)
+        except:
+            save = None    
+        post_question=PostQuestion.objects.filter(post=post_id)
+        
         post_images=[]
         questions=[]
         data={}
         images=PostImage.objects.filter(post=post_id)
         for img in images:
             post_images.append(img.image)
-        for que in questions:
-            answered_timesince=""
-            if(que.is_answered):
-                if(que.answered_date=="" or que.answered_time=="" or que.answer==""):
-                    return Response("Invalid data",status=status.HTTP_400_BAD_REQUEST)
-                answered_timesince= timesince_calulate(que.answered_date,que.answered_time) 
-                obj={}
-                obj['id']=que.id
-                obj['question']=que.question
-                obj['timesince']=timesince_calulate(que.date,que.time)
-                obj['user_id']=que.user.user_id
-                obj['is_answered']=que.is_answered
-                obj['answered_timesince']=answered_timesince
-                obj['answer']=que.answer
-                questions.append(obj)
+        for que in post_question:
+            obj={}
+            obj['id']=que.id
+            obj['question']=que.question
+            # obj['user_id']=que.user.user_id
+            obj['is_answered']=que.is_answered
+            obj['answer']=que.answer
+            questions.append(obj)
            
         data['title']=post.title
         data['description']=post.description
@@ -341,8 +340,8 @@ class PostSavedView(APIView):
     serializer_class=PostSavedSerializer
     # permission_classes = [AllowAny]
     def post(self,request):
-        post_id=request.GET['post_id']
-        user_id=request.GET['user_id']
+        post_id=request.data['post']
+        user_id=request.data['user']
         verb=request.GET['verb']
         if verb=="save":
             post_saved_serializer=PostSavedSerializer(data=request.data)
@@ -356,7 +355,7 @@ class PostSavedView(APIView):
                 return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
             if post_saved_serializer.is_valid() :
                 post_saved_serializer.save()
-                return Response("saved",status=status.HTTP_201_CREATED)
+                return Response("saved",status=status.HTTP_200_OK)
             return Response(post_saved_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         elif verb=="unsave":
             try:
@@ -380,26 +379,10 @@ class PostSavedView(APIView):
         else:
             return Response("incorrect verb",status=status.HTTP_204_NO_CONTENT)
 
-
-class PostQuestionView(APIView):
+class PostAnswerView(APIView):
     serializer_class=PostQuestionSerializer
-    def post(self,request):
-        post_question_serializer=PostQuestionSerializer(request.data)   
-        try:
-            user_data=Profile.objects.get(user_id=request.data['username'])
-        except Profile.DoesNotExist:
-            return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT) 
-        try:
-            post=Post.objects.get(id=request.data['post_id'])   
-        except Post.DoesNotExist:
-            return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
-        if post_question_serializer.is_valid() :
-            post_question_serializer.save()
-            return Response("question created",status=status.HTTP_201_CREATED)
-        return Response(post_question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
     def put(self,request):
-        post_question_serializer=PostQuestionSerializer(request.data)   
+        # post_question_serializer=PostQuestionSerializer(data=request.data)   
         authorization_header = request.headers.get('Authorization')
         try:
             access_token = authorization_header.split(' ')[1]
@@ -412,9 +395,45 @@ class PostQuestionView(APIView):
 
         user = Profile.objects.filter(user_id=payload['user_id']).first()
         if user is None:
-            raise exceptions.AuthenticationFailed('User not found.')   
+            raise exceptions.AuthenticationFailed('User not found.')
+        
         try:
-            post=Post.objects.get(id=request.data['post_id'],user=payload['user_id'])   
+            post=Post.objects.get(id=request.data['post'],user=payload['user_id'])   
+        except Post.DoesNotExist:
+            return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
+        try:
+            question=PostQuestion.objects.get(id=request.data['id'])  
+            question.is_answered = request.data['is_answered']
+            question.answer =request.data['answer'] 
+            question.save()
+            # post_question_serializer.save()
+            return Response("answered succressfully",status=status.HTTP_200_OK)
+        except PostQuestion.DoesNotExist:
+            return Response("question doesn't exists",status=status.HTTP_204_NO_CONTENT)    
+
+
+
+
+class PostQuestionView(APIView):
+    serializer_class=PostQuestionSerializer
+    permission_classes = [AllowAny]
+    def post(self,request):
+        post_question_serializer=PostQuestionSerializer(data=request.data)   
+        try:
+            post=Post.objects.get(id=request.data['post'])   
+        except Post.DoesNotExist:
+            return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
+        if post_question_serializer.is_valid() :
+            post_question_serializer.save()
+            return Response(post_question_serializer.data,status=status.HTTP_201_CREATED)
+        return Response(post_question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self,request):
+        post_question_serializer=PostQuestionSerializer(request.data)   
+        authorization_header = request.headers.get('Authorization')
+        
+        try:
+            post=Post.objects.get(id=request.data['post_id'])   
         except Post.DoesNotExist:
             return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
         try:
@@ -428,23 +447,16 @@ class PostQuestionView(APIView):
         return Response(post_question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self,request):
-        post_question_serializer=PostQuestionSerializer(request.data)   
         try:
-            user_data=Profile.objects.get(user_id=request.data['username'])
-        except Profile.DoesNotExist:
-            return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT) 
-        try:
-            post=Post.objects.get(id=request.data['post_id'])   
+            post=Post.objects.get(id=request.GET['post_id'])   
         except Post.DoesNotExist:
-            return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
+            return Response("post doesn't exists",status=status.HTTP_204_NO_CONT9ENT)
         try:
-            question=PostQuestion.objects.get(id=request.data['question_id'],user=request.data['username'])   
+            question=PostQuestion.objects.get(id=request.GET['question_id']).delete()
+            return Response("Deleted successfully",status=status.HTTP_200_OK)
         except PostQuestion.DoesNotExist:
-            return Response("question doesn't exists",status=status.HTTP_204_NO_CONTENT)    
-        if post_question_serializer.is_valid() :
-            post_question_serializer.save()
-            return Response("question created",status=status.HTTP_201_CREATED)
-        return Response(post_question_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response("question doesn't exists",status=status.HTTP_204_NO_CONTENT)  
+            
 
 
 class StartReservedPayment(APIView):
@@ -453,10 +465,10 @@ class StartReservedPayment(APIView):
         # request.data is coming from frontend
         amount = request.data['amount']
         username = request.data['username']
-        order_product = request.data['order_product']
+        reserve_product = request.data['reserve_product']
 
         user = Profile.objects.get(user_id=username)
-        post = Post.objects.get(id=order_product, price=amount)
+        post = Post.objects.get(id=reserve_product)
 
         if(user==None or post==None):
             return Response("Something went wrong", status=status.HTTP_404_NOT_FOUND)
@@ -516,10 +528,7 @@ class HandleReservedPaymentSuccess(APIView):
 
         checkprev = Reserved.objects.filter(reserve_product=post,user=user)
         if checkprev:
-            print(checkprev)
             expire_date = checkprev[0].expire_date
-            print(timezone.now())
-            print(expire_date)
             if expire_date < timezone.now():
                 Reserved.objects.filter(reserve_product=post,user=user).delete()
             else :

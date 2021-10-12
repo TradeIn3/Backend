@@ -4,7 +4,8 @@ import re
 class PostQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model=PostQuestion
-        fields=['id','post','user','question','time','date','is_answered','answered_date','answered_time','answer']
+        fields=['id','post','user','question','is_answered','answer']
+        # fields=['id','post','user','question','time','date','is_answered','answered_date','answered_time','answer']
 
 class PostSavedSerializer(serializers.ModelSerializer):
     class Meta:
