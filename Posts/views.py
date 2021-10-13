@@ -201,7 +201,7 @@ class SinglePostRetriveView(APIView):
             obj={}
             obj['id']=que.id
             obj['question']=que.question
-            # obj['user_id']=que.user.user_id
+            obj['user']=que.user.user_id
             obj['is_answered']=que.is_answered
             obj['answer']=que.answer
             questions.append(obj)
@@ -419,6 +419,10 @@ class PostQuestionView(APIView):
     permission_classes = [AllowAny]
     def post(self,request):
         post_question_serializer=PostQuestionSerializer(data=request.data)   
+        try:
+            user_data=Profile.objects.get(user_id=request.data['user'])
+        except Profile.DoesNotExist:
+            return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT)
         try:
             post=Post.objects.get(id=request.data['post'])   
         except Post.DoesNotExist:
