@@ -238,97 +238,64 @@ class SinglePostRetriveView(APIView):
 
 
 class PostRetriveView(APIView):
+    permission_classes=[AllowAny]
     def get(self,request):
-        authorization_header = request.headers.get('Authorization')
-        try:
-            access_token = authorization_header.split(' ')[1]
-            payload = jwt.decode(
-                access_token, settings.SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            raise exceptions.AuthenticationFailed('access_token expired.')
-        except IndexError:
-            raise exceptions.AuthenticationFailed('Token prefix missing.')
-
-        user = Profile.objects.filter(user_id=payload['user_id']).first()
-        if user is None:
-            raise exceptions.AuthenticationFailed('User not found.')
-        # city=Profile.objects.get(user_id=payload['user_id']).district
-        users=Profile.objects.all()
-        sortby=request.GET['sortby']
-        category=request.GET['category']
-        donation=request.GET['donation']
+        category = request.GET['category']
+        subcategory = request.GET['subcategory']
+        condition = request.GET['condition']
+        state = request.GET['state']
+        color = request.GET['color']
+        minPrice = request.GET['min']
+        maxPrice = request.GET['max']
+        brand = request.GET['brand']
+        is_barter = request.GET['barter']
+        sort = request.GET['sort']
+        is_donate = request.GET['exchange']
+        posts = None
+        if(sort=="lowest"):
+            posts=Post.objects.all().order_by('price')
+        elif(sort=="highest"):
+            posts=Post.objects.all().order_by('-price')   
+        elif(sort=="lowest"):
+            posts=Post.objects.all().order_by('date','time')
+        else:
+            posts=Post.objects.all()    
         
-        categories=['Furniture','Electronics & Appliances','Vehicles','Clothings','Handicrafts','Stationary','Pets','Beauty','miscellaneous']
         data=[]
-        for user in users:
-            post=None
-            if category != "null":
-                if category not in categories:
-                    return Response("Invalid Category",status=status.HTTP_204_NO_CONTENT)
-                posts=Post.objects.filter(user=user.user_id,category=category,is_sold=False)
-            else:
-                posts=Post.objects.filter(user=user.user_id,is_sold=False)    
+        
+        for post in posts:
+            if category!="Any" and post.category != category:
+                continue
+            if subcategory!="Any" and post.subcategory != subcategory:
+                continue
+            if brand!="Any" and post.brand != brand:
+                continue
+            if state!="Any" and post.is_sold == False:
+                continue
+            if len(color)>0 and post.color not in color:
+                continue
+            if len(condition)>0 and post.condition not in condition:
+                continue 
+            if maxPrice!="0" and (post.price < int(minPrice) or post.price > int(maxPrice) ):
+                continue    
+            if is_barter=="true" and post.is_barter == False :
+                continue
+            if is_donate=="true" and post.is_donate == False :
+                continue
+            post_images=[]
+            images=PostImage.objects.filter(post=post.id)
+            for img in images:
+                post_images.append(img.image)
+            temp={}
+            temp['title']=post.title
+            # temp['year']=post.year
+            temp['id']=post.id
+            temp['price']=post.id
+            temp['brand']=post.brand
+            # temp['is_owner']=(user.user_id==payload['user_id'])
+            temp['images']=post_images
+            data.append(temp)
             
-            for post in posts:
-                save=SavedPost.objects.filter(post=post.id,user=payload['user_id'])
-                post_images=[]
-                questions=[]
-                images=PostImage.objects.filter(post=post.id)
-                for img in images:
-                    post_images.append(img.image)
-                for que in questions:
-                    answered_timesince=""
-                    if(que.is_answered):
-                        if(que.answered_date=="" or que.answered_time=="" or que.answer==""):
-                            return Response("Invalid data",status=status.HTTP_400_BAD_REQUEST)
-                        answered_timesince= timesince_calulate(que.answered_date,que.answered_time) 
-                    obj={}
-                    obj['id']=que.id
-                    obj['question']=que.question
-                    obj['timesince']=timesince_calulate(que.date,que.time)
-                    obj['user_id']=que.user.user_id
-                    obj['is_answered']=que.is_answered
-                    obj['answered_timesince']=answered_timesince
-                    obj['answer']=que.answer
-                    questions.append(obj)
-                temp={}
-                temp['title']=post.title
-                temp['description']=post.description
-                # temp['year']=post.year
-                temp['id']=post.id
-                temp['price']=post.id
-                temp['category']=post.category
-                temp['timesince']=timesince_calulate(post.date,post.time)
-                temp['is_donate']=post.is_donate
-                temp['user_id']=user.user_id
-                temp['first_name']=user.first_name
-                temp['last_name']=user.last_name
-                temp['address']=user.address
-                temp['phone']=user.phone
-                temp['pincode']=user.pincode
-                temp['email']=user.email
-                temp['city']=user.city
-                temp['is_sold']=post.is_sold
-                temp['district']=user.district
-                temp['is_owner']=(user.user_id==payload['user_id'])
-                temp['is_saved']=(save!=None)
-                temp['images']=post_images
-                temp['questions']=questions
-                data.append(temp)
-        if category in categories:
-            if sortby=="high":
-                data.sort(key=lambda x:x.price,reverse=True)
-            elif sortby=="low":
-                data.sort(key=lambda x:x.price)
-            else:
-                data.sort(key=lambda x:x.id)
-
-            if donation:
-                tempdata=[]
-                for x in data:
-                    if x.is_donate:
-                        tempdata.append(x)
-                data=tempdata
 
 
         
