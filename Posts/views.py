@@ -1,7 +1,7 @@
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from .models import Post, SavedPost, PostImage, PostQuestion, Order, Reserved
+from .models import Post, SavedPost, PostImage, PostQuestion, Order, Reserve
 from Profile.models import Profile
-from .serializers import PostSerializer,PostSavedSerializer,PostQuestionSerializer,OrderSerializer,ReservedSerializer
+from .serializers import PostSerializer,PostSavedSerializer,PostQuestionSerializer,OrderSerializer,ReservedSerializer, PostImageSerializer
 from django.http import Http404
 from rest_framework import serializers, viewsets, status
 from rest_framework.response import Response
@@ -17,6 +17,7 @@ import razorpay
 import os
 import json
 from django.utils import timezone
+import cloudinary.uploader
 
 def timesince_calulate(date,time):
     timesince=""
@@ -47,13 +48,44 @@ class PostCreateView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self,request):
         post_serializer=PostSerializer(data=request.data)
-        user=Profile.object.filter(user_id=request.data['user'])
+        imagearray =[]
+        if request.data['img1']!="undefined":
+            upload_data = cloudinary.uploader.upload(request.data['img1'],folder="post")
+            imagearray.append(upload_data['public_id'])
+        if request.data['img2']!="undefined":
+            upload_data = cloudinary.uploader.upload(request.data['img2'],folder="post")
+            imagearray.append(upload_data['public_id'])
+        if request.data['img3']!="undefined":
+            upload_data = cloudinary.uploader.upload(request.data['img3'],folder="post")
+            imagearray.append(upload_data['public_id'])
+        if request.data['img4']!="undefined":
+            upload_data = cloudinary.uploader.upload(request.data['img4'],folder="post")   
+            imagearray.append(upload_data['public_id']) 
+        try:    
+            user=Profile.objects.get(user_id=request.data['user'])
+        except:
+            for img in imagearray:    
+                cloudinary.uploader.destroy(img,invalidate=True)    
         if(user.city=="" or user.district=="" or user.address=="" or user.pincode=="" or user.phone==""):
-            return Response("please complete your details",status=status.HTTP_204_NO_CONTENT)
+            for img in imagearray:    
+                cloudinary.uploader.destroy(img,invalidate=True)
+            return Response("Please complete your profile",status=status.HTTP_204_NO_CONTENT)
         if post_serializer.is_valid() and post_serializer.is_valid_form(request.data):
             post_serializer.save()
             data=post_serializer.data
+            for img in imagearray:
+                try:
+                    post = Post.objects.get(id=data['id'])
+                    new_image=PostImage.objects.create(post=post,image=img)
+                    PostImageSerializer(new_image)
+                except:
+                    for img in imagearray:    
+                        cloudinary.uploader.destroy(img,invalidate=True)    
+                    return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+            data["images"]=imagearray    
             return Response(data,status=status.HTTP_201_CREATED)
+        for img in imagearray:    
+            cloudinary.uploader.destroy(img,invalidate=True)    
         return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class PostEditView(APIView):
@@ -70,7 +102,7 @@ class PostEditView(APIView):
         except Post.DoesNotExist:
              return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT) 
 
-        post_update_serializer=PostSerializer(post,data=request.data)   ;
+        post_update_serializer=PostSerializer(post,data=request.data)  
 
 
         if post_update_serializer.is_valid() and post_update_serializer.is_valid_form(request.data):
@@ -152,7 +184,7 @@ class PostUserRetriveView(APIView):
             # temp['year']=post.year
             temp['id']=post.id
             temp['is_sold']=post.is_sold
-            temp['price']=post.id
+            temp['price']=post.price
             temp['category']=post.category
             temp['timesince']=timesince_calulate(post.date,post.time)
             temp['is_donate']=post.is_donate
@@ -175,10 +207,11 @@ class SinglePostRetriveView(APIView):
             access_token, settings.SECRET_KEY, algorithms=['HS256'])
         
 
-
         post_id=request.GET['id']
-        post = Post.objects.get(id=post_id)
-        
+        try:
+            post = Post.objects.get(id=post_id)
+        except: 
+            return Response("post doesn't exist",status=status.HTTP_204_NO_CONTENT)
         is_owner = False
         if payload:
             if payload['user_id'] == post.user_id:
@@ -210,7 +243,7 @@ class SinglePostRetriveView(APIView):
         data['description']=post.description
         data['condition']=post.condition
         data['id']=post.id
-        data['price']=post.id
+        data['price']=post.price
         data['category']=post.category
         data['date']=post.date
         data['is_donate']=post.is_donate
@@ -284,16 +317,17 @@ class PostRetriveView(APIView):
                 continue
             post_images=[]
             images=PostImage.objects.filter(post=post.id)
+            print(images)
             for img in images:
                 post_images.append(img.image)
             temp={}
             temp['title']=post.title
             # temp['year']=post.year
             temp['id']=post.id
-            temp['price']=post.id
+            temp['price']=post.price
             temp['brand']=post.brand
             # temp['is_owner']=(user.user_id==payload['user_id'])
-            temp['images']=post_images
+            temp['image']=post_images[0]
             data.append(temp)
             
 
@@ -497,14 +531,14 @@ class HandleReservedPaymentSuccess(APIView):
         if(user==None or post==None):
             return Response("Something went wrong")
 
-        checkprev = Reserved.objects.filter(reserve_product=post,user=user)
+        checkprev = Reserve.objects.filter(reserve_product=post,user=user)
         if checkprev:
             expire_date = checkprev[0].expire_date
             if expire_date < timezone.now():
-                Reserved.objects.filter(reserve_product=post,user=user).delete()
+                Reserve.objects.filter(reserve_product=post,user=user).delete()
             else :
                 return Response("Already Reserved",status=status.HTTP_204_NO_CONTENT)    
-        reserve = Reserved.objects.create(reserve_product=post,
+        reserve = Reserve.objects.create(reserve_product=post,
                                     user=user,
                                     isReserved=True,
                                     reserve_amount=data['amount'], 
@@ -542,7 +576,7 @@ class StartProductPayment(APIView):
         user = Profile.objects.filter(user_id=username)
         post = Post.objects.filter(id=order_product, price=amount)
 
-        reserve =Reserved.objects.get(reserve_product=order_product)
+        reserve =Reserve.objects.get(reserve_product=order_product)
         if(reserve):
             amount = amount - 10
         if(user==None or post==None):

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Post, SavedPost, PostQuestion, Order, Reserved
+from .models import Post, SavedPost, PostQuestion, Order, Reserve, PostImage
 import re
 class PostQuestionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -11,19 +11,31 @@ class PostSavedSerializer(serializers.ModelSerializer):
     class Meta:
         model=SavedPost
         fields=['post','user']
+class PostImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=PostImage
+        fields=['post','image']        
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model=Post
-        fields=['id','title','description','price','year','category','time','date','image','is_donate','is_donate','brand','author','user','is_sold']
+        fields=['id','title','description','price','category','time','date','is_donate','is_barter','brand','author','user','is_sold']
 
     def is_valid_form(self,validate_data):
-        self.ValidatePrice(validate_data['price'])
+        print(validate_data)
+        self.ValidatePrice(validate_data['price'],validate_data['is_barter'],validate_data['is_donate'])
         self.ValidateTitle(validate_data['title'])
         self.ValidateDescription(validate_data['description'])
+        self.ValidateCategory(validate_data['category'])
+        self.ValidateSubCategory(validate_data['subcategory'])
+        self.ValidateBrand(validate_data['brand'])
+        self.ValidateColor(validate_data['color'])
+        self.ValidateCondition(validate_data['condition'])
         return True
 
     
-    def ValidatePrice(self,price):
+    def ValidatePrice(self,price,is_barter,is_donate):
+        if is_barter or is_donate:
+            return price
         if price == "":
             raise serializers.ValidationError("Invalid price.")
         if int(price) <= 0 :
@@ -32,9 +44,21 @@ class PostSerializer(serializers.ModelSerializer):
             if char<'0' and char>'9':
                 raise serializers.ValidationError("Invalid price.")
         return price
-        
-            
-
+    def ValidateCategory(self,category):
+        if category == "":
+            raise serializers.ValidationError("Invalid category.")
+    def ValidateSubCategory(self,subcategory):
+        if subcategory == "":
+            raise serializers.ValidationError("Invalid subcategory.")       
+    def ValidateBrand(self,brand):
+        if brand == "":
+            raise serializers.ValidationError("Invalid brand.")                
+    def ValidateColor(self,color):
+        if color == "":
+            raise serializers.ValidationError("Invalid color.")  
+    def ValidateCondition(self,condition):
+        if condition == "":
+            raise serializers.ValidationError("Invalid condition.")              
     def ValidateTitle(self,title):
         if title=="":
             raise serializers.ValidationError("Invalid title")
@@ -63,6 +87,6 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class ReservedSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Reserved
+        model = Reserve
         fields = '__all__'
         depth = 2        

@@ -23,7 +23,7 @@ class Post(models.Model):
     is_donate=models.BooleanField(default=False)
     is_sold=models.BooleanField(default=False)
     is_barter=models.BooleanField(default=False)
-    user= models.OneToOneField(Profile, on_delete=models.CASCADE,null=True)
+    user= models.ForeignKey(Profile, on_delete=models.CASCADE,null=True)
     def __str__(self):
         return '%s' % (self.id)
 
@@ -66,7 +66,7 @@ class Order(models.Model):
     def __str__(self):
         return '%s' % (self.order_product)
 
-class Reserved(models.Model):
+class Reserve(models.Model):
     reserve_product = models.ForeignKey(Post, on_delete=models.CASCADE,null=True,blank=True)
     user=models.ForeignKey(Profile, on_delete=models.CASCADE,null=True,blank=True)
     reserve_amount = models.CharField(max_length=25)
