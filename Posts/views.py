@@ -575,10 +575,12 @@ class StartProductPayment(APIView):
 
         user = Profile.objects.filter(user_id=username)
         post = Post.objects.filter(id=order_product, price=amount)
-
-        reserve =Reserve.objects.get(reserve_product=order_product)
-        if(reserve):
-            amount = amount - 10
+        try:
+            reserve =Reserve.objects.get(reserve_product=order_product)
+            if(reserve):
+                amount = amount - 10
+        except:
+            pass        
         if(user==None or post==None):
             return Response("Something went wrong", status=status.HTTP_404_NOT_FOUND)
         # setup razorpay client
