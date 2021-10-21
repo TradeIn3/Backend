@@ -48,17 +48,18 @@ class PostCreateView(APIView):
     # permission_classes = [IsAuthenticated]
     def post(self,request):
         post_serializer=PostSerializer(data=request.data)
+        print(request.data['img1']=="null")
         imagearray =[]
-        if request.data['img1']!="undefined":
+        if request.data['img1']!="undefined" and  request.data['img1']!="null":
             upload_data = cloudinary.uploader.upload(request.data['img1'],folder="post")
             imagearray.append(upload_data['public_id'])
-        if request.data['img2']!="undefined":
+        if request.data['img2']!="undefined" and  request.data['img2']!="null":
             upload_data = cloudinary.uploader.upload(request.data['img2'],folder="post")
             imagearray.append(upload_data['public_id'])
-        if request.data['img3']!="undefined":
+        if request.data['img3']!="undefined" and  request.data['img3']!="null":
             upload_data = cloudinary.uploader.upload(request.data['img3'],folder="post")
             imagearray.append(upload_data['public_id'])
-        if request.data['img4']!="undefined":
+        if request.data['img4']!="undefined" and request.data['img4']!="null":
             upload_data = cloudinary.uploader.upload(request.data['img4'],folder="post")   
             imagearray.append(upload_data['public_id']) 
         try:    
@@ -113,21 +114,28 @@ class PostEditView(APIView):
 
 class PostDeleteView(APIView):
     serializer_class=PostSerializer
-    permission_classes=[AllowAny]
     def delete(self,request):
-        user_id=request.GET['username']
-        post_id=request.GET['post_id']
+        authorization_header = request.headers.get('Authorization')
         try:
-            user_data=Profile.objects.get(user_id=user_id)
+            access_token = authorization_header.split(' ')[1]
+            payload = jwt.decode(
+                access_token, settings.SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            raise exceptions.AuthenticationFailed('access_token expired.')
+        except IndexError:
+            raise exceptions.AuthenticationFailed('Token prefix missing.')
+        post_id=request.GET['id']
+        try:
+            user_data=Profile.objects.get(user_id=payload['user_id'])
         except Profile.DoesNotExist:
             return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT)  
         try:
-            post=Post.objects.get(user=user_id,id=post_id)   
+            post=Post.objects.get(user=payload['user_id'],id=post_id)   
         except Post.DoesNotExist:
             return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
 
         try:
-            Post.objects.filter(user=user_id,id=post_id).delete()
+            Post.objects.filter(user=payload['user_id'],id=post_id).delete()
             return Response("post deleted successfully.",status=status.HTTP_200_OK)
         except:
             return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
