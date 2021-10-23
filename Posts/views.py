@@ -225,13 +225,13 @@ class SinglePostRetriveView(APIView):
             if payload['user_id'] == post.user_id:
                 is_owner = True
         user = Profile.objects.get(user_id=post.user)
-        save =None
+        save = None
         try:
             save=SavedPost.objects.get(post=post_id,user=post.user)
         except:
             save = None    
         post_question=PostQuestion.objects.filter(post=post_id)
-        
+        print("save",save)
         post_images=[]
         questions=[]
         data={}
@@ -347,7 +347,6 @@ class PostRetriveView(APIView):
 
 class PostSavedView(APIView):
     serializer_class=PostSavedSerializer
-    # permission_classes = [AllowAny]
     def post(self,request):
         post_id=request.data['post']
         user_id=request.data['user']
@@ -362,6 +361,11 @@ class PostSavedView(APIView):
                 post=Post.objects.get(id=post_id)   
             except Post.DoesNotExist:
                 return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
+            try:
+                save=SavedPost.objects.get(post=post_id,user=post.user)
+                return response("Post already saved",status=status.HTTP_204_NO_CONTENT)
+            except:
+                pass    
             if post_saved_serializer.is_valid() :
                 post_saved_serializer.save()
                 return Response("saved",status=status.HTTP_200_OK)
@@ -383,7 +387,7 @@ class PostSavedView(APIView):
                 SavedPost.objects.filter(user=user_id,post=post_id).delete()
                 return Response("unsaved.",status=status.HTTP_200_OK)
             except:
-                return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
+                return Response("Something went wrong",status=status.HTTP_204_NO_CONTENT)
 
         else:
             return Response("incorrect verb",status=status.HTTP_204_NO_CONTENT)
