@@ -92,14 +92,15 @@ class PostCreateView(APIView):
 class PostEditView(APIView):
     serializer_class=PostSerializer
     # permission_classes=[IsAuthenticated]
-    def put(self,request,post_id):
-        post_serializer=PostSerializer(data=request.data)
+    def put(self,request):
+        post_id = request.data['id']
+        
         try:
-            user_data=Profile.objects.get(user_id=request.data['username'])
+            user_data=Profile.objects.get(user_id=request.data['user'])
         except Profile.DoesNotExist:
             return Response("user doesn't exists",status=status.HTTP_204_NO_CONTENT)  
         try:
-            post=Post.objects.get(author=request.data['username'],id=post_id)   
+            post=Post.objects.get(user=request.data['user'],id=post_id)   
         except Post.DoesNotExist:
              return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT) 
 
@@ -108,9 +109,9 @@ class PostEditView(APIView):
 
         if post_update_serializer.is_valid() and post_update_serializer.is_valid_form(request.data):
             post_update_serializer.save()
-            data=post_serializer.data
+            data=post_update_serializer.data
             return Response(data,status=status.HTTP_200_OK)
-        return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
+        return Response(post_update_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
 
 class PostDeleteView(APIView):
     serializer_class=PostSerializer
@@ -253,6 +254,8 @@ class SinglePostRetriveView(APIView):
         data['id']=post.id
         data['price']=post.price
         data['category']=post.category
+        data['subcategory']=post.subcategory
+        data['color']=post.color
         data['date']=post.date
         data['is_donate']=post.is_donate
         data['user_id']=user.user_id
@@ -325,7 +328,6 @@ class PostRetriveView(APIView):
                 continue
             post_images=[]
             images=PostImage.objects.filter(post=post.id)
-            print(images)
             for img in images:
                 post_images.append(img.image)
             temp={}
@@ -334,6 +336,8 @@ class PostRetriveView(APIView):
             temp['id']=post.id
             temp['price']=post.price
             temp['brand']=post.brand
+            temp['is_donate'] = post.is_donate
+            temp['is_barter'] = post.is_barter
             # temp['is_owner']=(user.user_id==payload['user_id'])
             temp['image']=post_images[0]
             data.append(temp)
@@ -363,7 +367,7 @@ class PostSavedView(APIView):
                 return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT)
             try:
                 save=SavedPost.objects.get(post=post_id,user=post.user)
-                return response("Post already saved",status=status.HTTP_204_NO_CONTENT)
+                return Response("Post already saved",status=status.HTTP_204_NO_CONTENT)
             except:
                 pass    
             if post_saved_serializer.is_valid() :

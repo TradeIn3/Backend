@@ -11,7 +11,7 @@ import json
 import jwt
 from django.conf import settings
 from rest_framework import exceptions
-from Posts.models import Post
+from Posts.models import Post, SavedPost, PostImage, PostQuestion, Order, Reserve
 
 
 
@@ -58,25 +58,22 @@ class UsernameRetrieveView(APIView):
 
 class UserUpdateView(APIView):  
     serializer_class=ProfileUpdateSerializer
-    permission_classes = [AllowAny]
     def put(self,request):
         try:
-            user_data=Profile.objects.get(user_id=request.data['user_id'])
+            user_data=Profile.objects.get(user_id=request.data['user'])
         except Profile.DoesNotExist:
             return Response("user doesn't exists",status=status.HTTP_404_NOT_FOUND)     
 
         profile_update_serializer=ProfileUpdateSerializer(user_data,data=request.data)   
         if profile_update_serializer.is_valid() and profile_update_serializer.is_valid_form(request.data):
             profile_update_serializer.save()
-            return Response("updated successfully",status=status.HTTP_200_OK)
-        return Response("Something went wrong !!", status=status.HTTP_400_BAD_REQUEST) 
+            return Response(profile_update_serializer.data,status=status.HTTP_200_OK)
+        return Response(profile_update_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
 
 class GetMyDetailsView(APIView):
-
     def get(self,request):
         authorization_header = request.headers.get('Authorization')
         if authorization_header == None:
-            print("why?")
             raise exceptions.AuthenticationFailed('Authentication credentials were not provided.')
         try:
             access_token = authorization_header.split(' ')[1]
@@ -109,7 +106,188 @@ class GetMyDetailsView(APIView):
         temp['post_count']=post_count
         temp['donate_count']=donate_count
         return Response(temp,status=status.HTTP_200_OK)    
+
+class GetUserDetailsView(APIView):
+    def get(self,request):
+        try:
+            user = Profile.objects.get(user_id=request.GET['user'])
+        except:
+            return Response("User not found",status=status.HTTP_204_NO_CONTENT)    
+            
+        post_count=Post.objects.filter(user=request.GET['user'],is_donate=False,is_barter=False).count()
+        donate_count=Post.objects.filter(user=request.GET['user'],is_donate=True,is_barter=False).count()
+        barter_count=Post.objects.filter(user=request.GET['user'],is_donate=False,is_barter=True).count()
+        temp={}
+        temp['username']=user.user_id
+        temp['first_name']=user.first_name
+        temp['last_name']=user.last_name
+        temp['address']=user.address
+        temp['phone']=user.phone
+        temp['pincode']=user.pincode
+        temp['email']=user.email
+        temp['city']=user.city
+        temp['district']=user.district
+        temp['image']=user.image
+        temp['barter_count']=barter_count
+        temp['post_count']=post_count
+        temp['donate_count']=donate_count
+        return Response(temp,status=status.HTTP_200_OK)   
+
+class ProfileBuyView(APIView):
+    def get(self,request):
+        user = Profile.objects.filter(user_id=request.GET['user']).first()
+        if user is None:
+            raise exceptions.AuthenticationFailed('User not found.')
+        data =[]
+        try:
+            posts = Post.objects.filter(user=user.user_id,is_donate=False,is_barter=False)
+            for post in posts:
+                temp = {} 
+                post_images=[]
+                images=PostImage.objects.filter(post=post.id)
+                for img in images:
+                    post_images.append(img.image)
+                temp['title']=post.title
+                temp['id']=post.id
+                temp['price']=post.price
+                temp['brand']=post.brand
+                temp['is_donate'] = post.is_donate
+                temp['is_barter'] = post.is_barter
+                temp['image']=post_images[0]
+                data.append(temp)
+        except:    
+            return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        return Response(data,status=status.HTTP_200_OK)
+
+class ProfileDonateView(APIView):
+    def get(self,request):
+
+        user = Profile.objects.filter(user_id=request.GET['user']).first()
+        if user is None:
+            raise exceptions.AuthenticationFailed('User not found.')
+
+        data =[]
+        try:
+            posts = Post.objects.filter(user=user.user_id,is_donate=True,is_barter=False)
+            for post in posts:
+                temp = {} 
+                post_images=[]
+                images=PostImage.objects.filter(post=post.id)
+                for img in images:
+                    post_images.append(img.image)
+                temp['title']=post.title
+                temp['id']=post.id
+                temp['price']=post.price
+                temp['brand']=post.brand
+                temp['is_donate'] = post.is_donate
+                temp['is_barter'] = post.is_barter
+                temp['image']=post_images[0]
+                data.append(temp)
+        except:    
+            return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        return Response(data,status=status.HTTP_200_OK)   
+
+class ProfileExchangeView(APIView):
+    def get(self,request):
+
+        user = Profile.objects.filter(user_id=request.GET['user']).first()
+        if user is None:
+            raise exceptions.AuthenticationFailed('User not found.')
+
+        data =[]
+        try:
+            posts = Post.objects.filter(user=user.user_id,is_donate=False,is_barter=True)
+            for post in posts:
+                temp = {} 
+                post_images=[]
+                images=PostImage.objects.filter(post=post.id)
+                for img in images:
+                    post_images.append(img.image)
+                temp['title']=post.title
+                temp['id']=post.id
+                temp['price']=post.price
+                temp['brand']=post.brand
+                temp['is_donate'] = post.is_donate
+                temp['is_barter'] = post.is_barter
+                temp['image']=post_images[0]
+                data.append(temp)
+        except:    
+            return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        return Response(data,status=status.HTTP_200_OK)
+
+class ProfileOrdersView(APIView):
+    def get(self,request):
+
+        user = Profile.objects.filter(user_id=request.GET['user']).first()
+        if user is None:
+            raise exceptions.AuthenticationFailed('User not found.')
+        try:
+            order = Order.objects.filter(user=user)
+        except:
+            return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        
+        data = []
+        for s in order:
+            temp = {}
+            try:
+                post = Post.objects.get(id=s.post.id)
+                post_images=[]
+                images=PostImage.objects.filter(post=post.id)
+                for img in images:
+                    post_images.append(img.image)
+                temp['title']=post.title
+                temp['id']=post.id
+                temp['price']=post.price
+                temp['brand']=post.brand
+                temp['is_donate'] = post.is_donate
+                temp['is_barter'] = post.is_barter
+                temp['image']=post_images[0]
+                data.append(temp)
+            except:    
+                return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        return Response(data,status=status.HTTP_200_OK)
+
+class ProfileWishlistView(APIView):
+    def get(self,request):
        
+        user = Profile.objects.filter(user_id=request.GET['user']).first()
+        if user is None:
+            raise exceptions.AuthenticationFailed('User not found.')
+
+        try:
+            saved = SavedPost.objects.filter(user=user)
+        except:
+            return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        
+        data = []
+        for s in saved:
+            temp = {}
+            try:
+                post = Post.objects.get(id=s.post.id)
+                post_images=[]
+                images=PostImage.objects.filter(post=post.id)
+                for img in images:
+                    post_images.append(img.image)
+                temp['title']=post.title
+                temp['id']=post.id
+                temp['price']=post.price
+                temp['brand']=post.brand
+                temp['is_donate'] = post.is_donate
+                temp['is_barter'] = post.is_barter
+                temp['image']=post_images[0]
+                data.append(temp)
+            except:    
+                return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        return Response(data,status=status.HTTP_200_OK)
+
+
 
 class UserLoginView(APIView):
     serializer_class=UserSerializer

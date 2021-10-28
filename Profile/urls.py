@@ -10,4 +10,10 @@ urlpatterns = [
    path('user/login/',views.UserLoginView.as_view(),name="login"),
    path('user/token/refresh/',views.TokenRefreshView.as_view(),name="tokenrefresh"),
    path('user/mydetails/',views.GetMyDetailsView.as_view(),name="getmydetails"),
+   path('user/wishlist/',views.ProfileWishlistView.as_view(),name="userwishlist"),
+   path('user/buy/',views.ProfileBuyView.as_view(),name="userbuy"),
+   path('user/donate/',views.ProfileDonateView.as_view(),name="userdonate"),
+   path('user/exchange/',views.ProfileExchangeView.as_view(),name="userexchange"),
+   path('user/orders/',views.ProfileOrdersView.as_view(),name="userexchange"),
+   path('user/details/',views.GetUserDetailsView.as_view(),name="userdetails"),
 ]

@@ -18,7 +18,7 @@ class PostImageSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model=Post
-        fields=['id','title','description','price','category','time','date','is_donate','is_barter','brand','author','user','is_sold']
+        fields=['id','title','description','price','category','color','condition','subcategory','time','date','is_donate','is_barter','brand','author','user','is_sold']
 
     def is_valid_form(self,validate_data):
         print(validate_data)
@@ -40,7 +40,7 @@ class PostSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Invalid price.")
         if int(price) <= 0 :
             raise serializers.ValidationError("Invalid price.")
-        for char in price:
+        for char in str(price):
             if char<'0' and char>'9':
                 raise serializers.ValidationError("Invalid price.")
         return price

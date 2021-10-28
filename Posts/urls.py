@@ -4,7 +4,7 @@ from . import views
 app_name="Posts"
 urlpatterns = [
    path('create/',views.PostCreateView.as_view(),name="createpost"),
-   path('edit/<int:post_id>/',views.PostEditView.as_view(),name="editpost"),
+   path('edit/',views.PostEditView.as_view(),name="editpost"),
    path('delete/',views.PostDeleteView.as_view(),name="postdelete"),
    path('user/retrieve/',views.PostUserRetriveView.as_view(),name="postuser"),
    path('all/retrieve/',views.PostRetriveView.as_view(),name="allpost"),

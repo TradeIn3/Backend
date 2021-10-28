@@ -37,8 +37,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     def ValidateFirstName(self,name):
         if name=="" :
             raise serializers.ValidationError("Invalid firstname")
-        if len(name) < 2 or len(name)>30:
-            raise serializers.ValidationError("firstname 2-30 characters are allowed")
+        if len(name) < 2 or len(name)>50:
+            raise serializers.ValidationError("firstname 2-50 characters are allowed")
         pattern=re.compile(r"[A-Za-z]+$")
         if re.fullmatch(pattern, name):
             return name
@@ -48,8 +48,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     def ValidateLastName(self,name):
         if name=="" :
             raise serializers.ValidationError("Invalid lastname")
-        if len(name) < 2 or len(name)>30:
-            raise serializers.ValidationError("lastname 2-30 characters are allowed")
+        if len(name) < 2 or len(name)>50:
+            raise serializers.ValidationError("lastname 2-50 characters are allowed")
         pattern=re.compile(r"[A-Za-z]+$")
         if re.fullmatch(pattern, name):
             return name
@@ -88,13 +88,15 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model=Profile
-        fields=['user_id','city','district','address','pincode','phone','image']
+        fields=['city','district','address','pincode','phone','first_name','last_name']
 
     def is_valid_form(self,validate_data):
         self.ValidatePincode(validate_data['pincode'])
         self.ValidatePhone(validate_data['phone'])
         self.ValidateCity(validate_data['city'])
         self.ValidateDistrict(validate_data['district'])
+        self.ValidateFirstName(validate_data['first_name'])
+        self.ValidateLastName(validate_data['last_name'])
         return True
 
     
@@ -125,3 +127,24 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         else: 
             raise serializers.ValidationError("Invalid district")        
 
+    def ValidateFirstName(self,name):
+        if name=="" :
+            raise serializers.ValidationError("Invalid firstname")
+        if len(name) < 2 or len(name)>50:
+            raise serializers.ValidationError("firstname 2-50 characters are allowed")
+        pattern=re.compile(r"[A-Za-z]+$")
+        if re.fullmatch(pattern, name):
+            return name
+        else:
+            raise serializers.ValidationError("Invalid firstname")
+
+    def ValidateLastName(self,name):
+        if name=="" :
+            raise serializers.ValidationError("Invalid lastname")
+        if len(name) < 2 or len(name)>50:
+            raise serializers.ValidationError("lastname 2-50 characters are allowed")
+        pattern=re.compile(r"[A-Za-z]+$")
+        if re.fullmatch(pattern, name):
+            return name
+        else:
+            raise serializers.ValidationError("Invalid lastname")
