@@ -1,6 +1,6 @@
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Profile
-from .serializers import ProfileSerializer, ProfileUpdateSerializer, UserSerializer
+from .serializers import ProfileSerializer, ProfileUpdateSerializer, UserSerializer, ImageSerializer
 from django.http import Http404
 from rest_framework import serializers, viewsets, status
 from rest_framework.response import Response
@@ -12,8 +12,8 @@ import jwt
 from django.conf import settings
 from rest_framework import exceptions
 from Posts.models import Post, SavedPost, PostImage, PostQuestion, Order, Reserve
-
-
+import cloudinary.uploader
+ 
 
 class UserProfileCreateView(APIView):
     serializer_class=ProfileSerializer
@@ -36,6 +36,44 @@ class UserProfileCreateView(APIView):
                             },status=status.HTTP_201_CREATED)
         return Response(profile_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
 
+
+class ChangeProfileImageView(APIView):
+    serializer_class=ImageSerializer
+    def put(self,request):
+        authorization_header = request.headers.get('Authorization')
+        if authorization_header == None:
+            raise exceptions.AuthenticationFailed('Authentication credentials were not provided.')
+        try:
+            access_token = authorization_header.split(' ')[1]
+            payload = jwt.decode(
+                access_token, settings.SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            raise exceptions.AuthenticationFailed('access_token expired.')
+        except IndexError:
+            raise exceptions.AuthenticationFailed('Token prefix missing.')
+
+        user = Profile.objects.filter(user_id=payload['user_id']).first()
+        if user is None:
+            raise exceptions.AuthenticationFailed('User not found.')
+
+        image = request.data['image']
+        print(image)
+        if image!="undefined" and  image!="null":
+            upload_data = cloudinary.uploader.upload(image,folder="profile")
+            print(upload_data)
+            request.data['image']=upload_data['public_id']
+        else :
+            return Response("Invalid image",status=status.HTTP_204_NO_CONTENT)    
+
+        image_serializer=ImageSerializer(user,data=request.data)
+        if image_serializer.is_valid():
+            image_serializer.save()
+            return Response(upload_data['public_id'],status=status.HTTP_200_OK)
+
+        return Response("Bad Request",status=status.HTTP_400_BAD_REQUEST)    
+
+
+
 class UsernameRetrieveView(APIView):
     permission_classes = [AllowAny]
     def get(self,request):
@@ -55,6 +93,7 @@ class UsernameRetrieveView(APIView):
             temp['image']=user.image
             data.append(temp)
         return Response(data,status=status.HTTP_200_OK)
+
 
 class UserUpdateView(APIView):  
     serializer_class=ProfileUpdateSerializer
@@ -229,26 +268,34 @@ class ProfileOrdersView(APIView):
         except:
             return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
 
-        
         data = []
         for s in order:
             temp = {}
-            try:
-                post = Post.objects.get(id=s.post.id)
-                post_images=[]
-                images=PostImage.objects.filter(post=post.id)
-                for img in images:
-                    post_images.append(img.image)
-                temp['title']=post.title
-                temp['id']=post.id
-                temp['price']=post.price
-                temp['brand']=post.brand
-                temp['is_donate'] = post.is_donate
-                temp['is_barter'] = post.is_barter
-                temp['image']=post_images[0]
-                data.append(temp)
-            except:    
-                return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+            # try:
+            post = Post.objects.get(id=s.order_product.id)
+            post_images=[]
+            images=PostImage.objects.filter(post=post.id)
+            for img in images:
+                post_images.append(img.image)
+            x = s.order_date.date()    
+            temp['title']=post.title
+            temp['order_id']=s.order_payment_id
+            temp['order_date']=x.strftime("%B %d, %Y")
+            temp['user_address']=user.address
+            temp['user_phone']=user.phone
+            temp['user_city']=user.city
+            temp['user_pincode']=user.pincode
+            temp['user_name']=user.first_name+" "+user.last_name
+            temp['total_amount']=post.price+15
+            temp['id']=post.id
+            temp['price']=post.price
+            temp['brand']=post.brand
+            temp['is_donate'] = post.is_donate
+            temp['is_barter'] = post.is_barter
+            temp['image']=post_images[0]
+            data.append(temp)
+            # except:    
+            #     return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
 
         return Response(data,status=status.HTTP_200_OK)
 

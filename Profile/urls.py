@@ -16,4 +16,5 @@ urlpatterns = [
    path('user/exchange/',views.ProfileExchangeView.as_view(),name="userexchange"),
    path('user/orders/',views.ProfileOrdersView.as_view(),name="userexchange"),
    path('user/details/',views.GetUserDetailsView.as_view(),name="userdetails"),
+   path('user/image/',views.ChangeProfileImageView.as_view(),name="userimage"),
 ]

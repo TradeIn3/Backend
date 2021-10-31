@@ -8,6 +8,11 @@ class UserSerializer(serializers.ModelSerializer):
         model=Profile
         fields=['user_id','password']
 
+class ImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model=Profile
+        fields = ['image']
+
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model=Profile

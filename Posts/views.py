@@ -261,6 +261,7 @@ class SinglePostRetriveView(APIView):
         data['user_id']=user.user_id
         data['first_name']=user.first_name
         data['last_name']=user.last_name
+        data['user_image']=user.image
         data['brand']=post.brand
         data['address']=user.address
         data['phone']=user.phone
