@@ -210,27 +210,54 @@ class SinglePostRetriveView(APIView):
     def get(self,request):
         authorization_header = request.headers.get('Authorization')
         payload = None
-        if authorization_header:
-            access_token = authorization_header.split(' ')[1]
-            payload = jwt.decode(
-            access_token, settings.SECRET_KEY, algorithms=['HS256'])
-        
-
+        myself = None
+        reserved = None
+        reserved_date = None
+        is_reserved = False
+        expire_date = None
+        expire_time = None
+        reserve_expire_date = None
         post_id=request.GET['id']
         try:
             post = Post.objects.get(id=post_id)
         except: 
             return Response("post doesn't exist",status=status.HTTP_204_NO_CONTENT)
+        if authorization_header:
+            access_token = authorization_header.split(' ')[1]
+            payload = jwt.decode(
+            access_token, settings.SECRET_KEY, algorithms=['HS256'])
+            myself = Profile.objects.filter(user_id=payload['user_id']).first()
+            if myself is None:
+                raise exceptions.AuthenticationFailed('User not found.')
+            try:
+                reserve=Reserve.objects.get(reserve_product=post_id,user=myself)
+                if(reserve.expire_date < timezone.now()):
+                    is_reserved=False
+                else:
+                    is_reserved = True
+                    expire_date=reserve.expire_date.date()   
+                    expire_time = reserve.expire_date.time() 
+                    if expire_date:
+                        reserve_expire_date = expire_date.strftime("%B %d, %Y")
+            except:
+                reserve = None
+           
+
+       
         is_owner = False
         if payload:
             if payload['user_id'] == post.user_id:
                 is_owner = True
         user = Profile.objects.get(user_id=post.user)
         save = None
+       
         try:
-            save=SavedPost.objects.get(post=post_id,user=post.user)
+            save=SavedPost.objects.get(post=post_id,user=myself)
         except:
             save = None    
+
+        
+
         post_question=PostQuestion.objects.filter(post=post_id)
         print("save",save)
         post_images=[]
@@ -276,7 +303,9 @@ class SinglePostRetriveView(APIView):
         data['is_saved']=(save!=None)
         data['images']=post_images
         data['questions']=questions
-
+        data['is_reserved']=is_reserved
+        data['reserved_expire_date']= reserve_expire_date
+        data['reserved_expire_time']=expire_time
         
         return Response(data,status=status.HTTP_200_OK)
 

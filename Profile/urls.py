@@ -14,7 +14,8 @@ urlpatterns = [
    path('user/buy/',views.ProfileBuyView.as_view(),name="userbuy"),
    path('user/donate/',views.ProfileDonateView.as_view(),name="userdonate"),
    path('user/exchange/',views.ProfileExchangeView.as_view(),name="userexchange"),
-   path('user/orders/',views.ProfileOrdersView.as_view(),name="userexchange"),
+   path('user/orders/',views.ProfileOrdersView.as_view(),name="userorders"),
+   path('user/reserves/',views.ProfileReserveView.as_view(),name="userreserve"),
    path('user/details/',views.GetUserDetailsView.as_view(),name="userdetails"),
    path('user/image/',views.ChangeProfileImageView.as_view(),name="userimage"),
 ]

@@ -263,41 +263,77 @@ class ProfileOrdersView(APIView):
         user = Profile.objects.filter(user_id=request.GET['user']).first()
         if user is None:
             raise exceptions.AuthenticationFailed('User not found.')
-        try:
-            order = Order.objects.filter(user=user)
+        try:reserve = Order.objects.filter(user=user)
         except:
             return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
 
         data = []
         for s in order:
             temp = {}
+            try:
+                post = Post.objects.get(id=s.order_product.id)
+                post_images=[]
+                images=PostImage.objects.filter(post=post.id)
+                for img in images:
+                    post_images.append(img.image)
+                x = s.order_date.date()    
+                temp['title']=post.title
+                temp['order_id']=s.order_payment_id
+                temp['order_date']=x.strftime("%B %d, %Y")
+                temp['user_address']=user.address
+                temp['user_phone']=user.phone
+                temp['user_city']=user.city
+                temp['user_pincode']=user.pincode
+                temp['user_name']=user.first_name+" "+user.last_name
+                temp['total_amount']=post.price+15
+                temp['id']=post.id
+                temp['price']=post.price
+                temp['brand']=post.brand
+                temp['is_donate'] = post.is_donate
+                temp['is_barter'] = post.is_barter
+                temp['image']=post_images[0]
+                data.append(temp)
+            except:    
+                return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        return Response(data,status=status.HTTP_200_OK)
+
+class ProfileReserveView(APIView):
+    def get(self,request):
+        user = Profile.objects.filter(user_id=request.GET['user']).first()
+        if user is None:
+            raise exceptions.AuthenticationFailed('User not found.')
+        try:
+            reserve = Reserve.objects.filter(user=user)
+        except:
+            return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
+
+        data = []
+        for s in reserve:
+            temp = {}
             # try:
-            post = Post.objects.get(id=s.order_product.id)
+            post = Post.objects.get(id=s.reserve_product.id)
             post_images=[]
             images=PostImage.objects.filter(post=post.id)
             for img in images:
                 post_images.append(img.image)
-            x = s.order_date.date()    
+            x = s.expire_date.date()    
+            y= s.expire_date.time()
             temp['title']=post.title
-            temp['order_id']=s.order_payment_id
-            temp['order_date']=x.strftime("%B %d, %Y")
-            temp['user_address']=user.address
-            temp['user_phone']=user.phone
-            temp['user_city']=user.city
-            temp['user_pincode']=user.pincode
-            temp['user_name']=user.first_name+" "+user.last_name
-            temp['total_amount']=post.price+15
+            temp['reserve_id']=s.reserve_payment_id
+            temp['expire_date']=x.strftime("%B %d, %Y")
+            temp['expire_time']="{:d}:{:02d}".format(y.hour,y.minute)
             temp['id']=post.id
-            temp['price']=post.price
-            temp['brand']=post.brand
-            temp['is_donate'] = post.is_donate
-            temp['is_barter'] = post.is_barter
+            temp['price']=s.reserve_amount
+            # temp['brand']=post.brand
+            # temp['is_donate'] = post.is_donate
+            # temp['is_barter'] = post.is_barter
             temp['image']=post_images[0]
             data.append(temp)
             # except:    
             #     return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
 
-        return Response(data,status=status.HTTP_200_OK)
+        return Response(data,status=status.HTTP_200_OK)        
 
 class ProfileWishlistView(APIView):
     def get(self,request):
