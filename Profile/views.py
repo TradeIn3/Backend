@@ -263,7 +263,8 @@ class ProfileOrdersView(APIView):
         user = Profile.objects.filter(user_id=request.GET['user']).first()
         if user is None:
             raise exceptions.AuthenticationFailed('User not found.')
-        try:reserve = Order.objects.filter(user=user)
+        try:
+            order = Order.objects.filter(user=user)
         except:
             return Response("Something went wrong", status=status.HTTP_400_BAD_REQUEST)    
 

@@ -324,7 +324,7 @@ class PostRetriveView(APIView):
         brand = request.GET['brand']
         is_barter = request.GET['barter']
         sort = request.GET['sort']
-        is_donate = request.GET['exchange']
+        is_donate = request.GET['donate']
         posts = None
         if(sort=="lowest"):
             posts=Post.objects.all().order_by('price')
