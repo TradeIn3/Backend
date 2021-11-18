@@ -15,5 +15,6 @@ urlpatterns = [
    path('productpay/', views.StartProductPayment.as_view(), name="payment"),
    path('productpayment/success/', views.HandleProductPaymentSuccess.as_view(), name="payment_success"),
    path('reservepay/', views.StartReservedPayment.as_view(), name="payment"),
-   path('reservepayment/success/', views.HandleReservedPaymentSuccess.as_view(), name="payment_success")
+   path('reservepayment/success/', views.HandleReservedPaymentSuccess.as_view(), name="payment_success"),
+   path('allbrands/',views.AllBrands.as_view(),name="all_brands")
 ]

@@ -47,6 +47,7 @@ class PostCreateView(APIView):
     serializer_class=PostSerializer
     # permission_classes = [IsAuthenticated]
     def post(self,request):
+        request.data["brand"] = request.data["brand"].capitalize()
         post_serializer=PostSerializer(data=request.data)
         print(request.data['img1']=="null")
         imagearray =[]
@@ -88,6 +89,12 @@ class PostCreateView(APIView):
         for img in imagearray:    
             cloudinary.uploader.destroy(img,invalidate=True)    
         return Response(post_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class AllBrands(APIView):
+    permission_classes=[AllowAny]
+    def get(self,request):
+        data = Post.objects.order_by('brand').values_list('brand', flat=True).distinct()
+        return Response(data,status=status.HTTP_200_OK)  
 
 class PostEditView(APIView):
     serializer_class=PostSerializer
@@ -342,7 +349,7 @@ class PostRetriveView(APIView):
                 continue
             if subcategory!="Any" and post.subcategory != subcategory:
                 continue
-            if brand!="Any" and post.brand != brand:
+            if len(brand)>0 and post.brand not in brand:
                 continue
             if state!="Any" and post.is_sold == False:
                 continue
