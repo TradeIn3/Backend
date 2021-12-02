@@ -5,7 +5,6 @@ class PostQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model=PostQuestion
         fields=['id','post','user','question','is_answered','answer']
-        # fields=['id','post','user','question','time','date','is_answered','answered_date','answered_time','answer']
 
 class PostSavedSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,7 +17,7 @@ class PostImageSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model=Post
-        fields=['id','title','description','price','category','color','condition','subcategory','time','date','is_donate','is_barter','brand','author','user','is_sold']
+        fields=['id','title','description','genre','price','category','color','condition','subcategory','time','date','is_donate','is_barter','brand','author','user','is_sold']
 
     def is_valid_form(self,validate_data):
         print(validate_data)

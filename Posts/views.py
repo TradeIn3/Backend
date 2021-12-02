@@ -45,7 +45,6 @@ def timesince_calulate(date,time):
 
 class PostCreateView(APIView):
     serializer_class=PostSerializer
-    # permission_classes = [IsAuthenticated]
     def post(self,request):
         request.data["brand"] = request.data["brand"].capitalize()
         post_serializer=PostSerializer(data=request.data)
@@ -197,7 +196,7 @@ class PostUserRetriveView(APIView):
             temp['title']=post.title
             temp['author']=post.author
             temp['description']=post.description
-            # temp['year']=post.year
+            temp['genre']=post.genre
             temp['id']=post.id
             temp['is_sold']=post.is_sold
             temp['price']=post.price
@@ -301,6 +300,7 @@ class SinglePostRetriveView(APIView):
         data['phone']=user.phone
         data['pincode']=user.pincode
         data['email']=user.email
+        data['genre']=post.genre
         data['city']=user.city
         data['is_sold']=post.is_sold
         data['is_barter']=post.is_barter
@@ -369,7 +369,7 @@ class PostRetriveView(APIView):
                 post_images.append(img.image)
             temp={}
             temp['title']=post.title
-            # temp['year']=post.year
+            temp['genre']=post.genre
             temp['id']=post.id
             temp['price']=post.price
             temp['brand']=post.brand
@@ -378,10 +378,6 @@ class PostRetriveView(APIView):
             # temp['is_owner']=(user.user_id==payload['user_id'])
             temp['image']=post_images[0]
             data.append(temp)
-            
-
-
-        
         return Response(data,status=status.HTTP_200_OK)
 
 

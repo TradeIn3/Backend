@@ -1,13 +1,10 @@
 from django.db import models
 from Profile.models import Profile
-# import datetime
 from datetime import datetime, timedelta
-# def year_choices():
-#     return [(r,r) for r in range(1960, datetime.now().year+1)]
 
 def current_year():
     return datetime.date.today().year
-    # validation for author
+    
 class Post(models.Model):
     title = models.CharField(max_length=100,null=False, blank=False,default="")
     author = models.CharField(max_length=100,null=False, blank=False,default="")
@@ -15,6 +12,7 @@ class Post(models.Model):
     condition = models.CharField(max_length=50,null=False, blank=False,default="")
     description = models.CharField(max_length=250,null=False, blank=False,default="")
     color = models.CharField(max_length=100,null=False, blank=False,default="")
+    genre = models.CharField(max_length=100,null=False, blank=False, default="")
     price=models.IntegerField(null=True,blank=True,default="")
     category=models.CharField(max_length=100,default="")
     subcategory=models.CharField(max_length=100,default="")

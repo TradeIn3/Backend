@@ -25,7 +25,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         self.ValidateEmail(validate_data['email'])
         self.ValidatePassword(validate_data['password'])
         return True
-    # create regex for username firstname lastname
+    
     def ValidateUsername(self,username):
         if username=="" :
              raise serializers.ValidationError("Invalid username")

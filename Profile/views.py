@@ -41,6 +41,7 @@ class ChangeProfileImageView(APIView):
     serializer_class=ImageSerializer
     def put(self,request):
         authorization_header = request.headers.get('Authorization')
+        print(authorization_header)
         if authorization_header == None:
             raise exceptions.AuthenticationFailed('Authentication credentials were not provided.')
         try:
@@ -53,11 +54,12 @@ class ChangeProfileImageView(APIView):
             raise exceptions.AuthenticationFailed('Token prefix missing.')
 
         user = Profile.objects.filter(user_id=payload['user_id']).first()
+        if(user['image']):
+             cloudinary.uploader.destroy(user['image'],invalidate=True)   
         if user is None:
             raise exceptions.AuthenticationFailed('User not found.')
 
         image = request.data['image']
-        print(image)
         if image!="undefined" and  image!="null":
             upload_data = cloudinary.uploader.upload(image,folder="profile")
             print(upload_data)
@@ -416,8 +418,6 @@ class ChechUsernameView(APIView):
             return Response("Not found.", status=status.HTTP_200_OK)    
       
 
-
-
 class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
     def post(self,request):
@@ -439,10 +439,6 @@ class TokenRefreshView(APIView):
                             'access_token': access_token,
                             'refresh_token':refresh_token
                         },status=status.HTTP_200_OK)
-
-
-
-
 
 def generate_access_token(user):
 
