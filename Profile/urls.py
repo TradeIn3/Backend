@@ -4,7 +4,7 @@ from . import views
 app_name="Profile"
 urlpatterns = [
    path('user/account/create/',views.UserProfileCreateView.as_view(),name="adduser"),
-   path('user/check/username/<slug:username>/',views.ChechUsernameView.as_view(),name="checkusername"),
+   path('user/check/username/<username>/',views.ChechUsernameView.as_view(),name="checkusername"),
    path('user/account/update/',views.UserUpdateView.as_view(),name="updateuser"),
    path('user/login/',views.UserLoginView.as_view(),name="login"),
    path('user/token/refresh/',views.TokenRefreshView.as_view(),name="tokenrefresh"),

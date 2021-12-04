@@ -21,12 +21,12 @@ class UserProfileCreateView(APIView):
     def post(self, request):
         profile_data=Profile.objects.all()
         profile_serializer=ProfileSerializer(data=request.data)
-        user=self.request.user
-        user_data=Profile.objects.get(user_id=request.data['user_id'])
+        user_data=Profile.objects.filter(user_id=request.data['user_id']).first()
         if user_data:
             return Response("user already exits", status=status.HTTP_204_NO_CONTENT)
         if profile_serializer.is_valid() and profile_serializer.is_valid_form(request.data):
             profile_serializer.save()
+            user = Profile.objects.get(user_id=request.data['user_id'])
             access_token = generate_access_token(user)
             refresh_token = generate_refresh_token(user)
             return Response({
@@ -407,11 +407,11 @@ def ValidateUsername(username):
 class ChechUsernameView(APIView):
     permission_classes = [AllowAny]
     def get(self,request,username):
-        if (ValidateUsername(username)==False):
-            return Response("Invalid Username",status=status.HTTP_204_NO_CONTENT)
+        # if (ValidateUsername(username)==False):
+        #     return Response("Invalid Username",status=status.HTTP_20)
         
-        user_data=Profile.objects.filter(user_id=username)
-
+        user_data=Profile.objects.filter(user_id=username).first()
+        print(user_data,username)
         if user_data:
             return Response("username already exists.",status=status.HTTP_204_NO_CONTENT)
         else:

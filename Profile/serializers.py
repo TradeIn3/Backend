@@ -33,7 +33,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("username 3-30 characters are allowed")
         if username[0].isnumeric():
             raise serializers.ValidationError("can't start with a number")   
-        pattern=re.compile(r"[A-Za-z0-9_]+$")
+        pattern=re.compile(r"[A-Za-z0-9_@]+$")
         if re.fullmatch(pattern, username):
             return username
         else:
