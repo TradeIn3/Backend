@@ -626,7 +626,8 @@ class StartProductPayment(APIView):
         post = Post.objects.filter(id=order_product, price=amount)
         try:
             reserve =Reserve.objects.get(reserve_product=order_product)
-            if(reserve):
+
+            if(reserve and reserve.expire_date > timezone.now()):
                 amount = amount - 10
         except:
             pass        
@@ -711,7 +712,7 @@ class HandleProductPaymentSuccess(APIView):
 
      
 
-        return Response("Successfull payment",status=status.HTTP_200_OK)
+        return Response(serializer.data,status=status.HTTP_200_OK)
 
 
 

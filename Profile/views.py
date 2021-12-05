@@ -13,6 +13,7 @@ from django.conf import settings
 from rest_framework import exceptions
 from Posts.models import Post, SavedPost, PostImage, PostQuestion, Order, Reserve
 import cloudinary.uploader
+from django.utils import timezone
  
 
 class UserProfileCreateView(APIView):
@@ -313,6 +314,8 @@ class ProfileReserveView(APIView):
 
         data = []
         for s in reserve:
+            if s.expire_date < timezone.now():
+                continue
             temp = {}
             # try:
             post = Post.objects.get(id=s.reserve_product.id)

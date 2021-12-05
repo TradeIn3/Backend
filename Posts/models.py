@@ -62,7 +62,7 @@ class Order(models.Model):
     isPaid = models.BooleanField(default=False)
     order_date = models.DateTimeField(auto_now=True)
     def __str__(self):
-        return '%s' % (self.order_product)
+        return '%s' % (self.order_payment_id)
 
 class Reserve(models.Model):
     reserve_product = models.ForeignKey(Post, on_delete=models.CASCADE,null=True,blank=True)
@@ -73,4 +73,4 @@ class Reserve(models.Model):
     expire_date = models.DateTimeField(default=datetime.now()+timedelta(days=2))
     reserve_payment_id = models.CharField(max_length=100)
     def __str__(self):
-       return '%s' % (self.id)
+       return '%s' % (self.reserve_payment_id)
