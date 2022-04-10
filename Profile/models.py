@@ -13,6 +13,7 @@ class Profile(models.Model):
     pincode=models.IntegerField(null=True,blank=True)
     phone=models.IntegerField(null=True,blank=True)
     image=models.TextField(default="",null=True,blank=True)
+    coins=models.IntegerField(default="200",null=False)
 
     def __str__(self):
         return '%s' % (self.user_id)

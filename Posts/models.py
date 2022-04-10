@@ -21,6 +21,7 @@ class Post(models.Model):
     is_donate=models.BooleanField(default=False)
     is_sold=models.BooleanField(default=False)
     is_barter=models.BooleanField(default=False)
+    is_premium=models.BooleanField(default=False)
     user= models.ForeignKey(Profile, on_delete=models.CASCADE,null=True)
     def __str__(self):
         return '%s' % (self.id)

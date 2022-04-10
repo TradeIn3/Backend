@@ -48,7 +48,6 @@ class PostCreateView(APIView):
     def post(self,request):
         request.data["brand"] = request.data["brand"].capitalize()
         post_serializer=PostSerializer(data=request.data)
-        print(request.data['img1']=="null")
         imagearray =[]
         if request.data['img1']!="undefined" and  request.data['img1']!="null":
             upload_data = cloudinary.uploader.upload(request.data['img1'],folder="post")
@@ -73,6 +72,10 @@ class PostCreateView(APIView):
             return Response("Please complete your profile",status=status.HTTP_204_NO_CONTENT)
         if post_serializer.is_valid() and post_serializer.is_valid_form(request.data):
             post_serializer.save()
+            if request.data["is_premium"]:
+                Profile.objects.filter(user_id = request.data["user"]).update(coins = max(0,user.coins-250));
+            else:
+                Profile.objects.filter(user_id = request.data["user"]).update(coins = user.coins+50);
             data=post_serializer.data
             for img in imagearray:
                 try:
@@ -111,10 +114,10 @@ class PostEditView(APIView):
              return Response("post doesn't exists",status=status.HTTP_204_NO_CONTENT) 
 
         post_update_serializer=PostSerializer(post,data=request.data)  
-
-
         if post_update_serializer.is_valid() and post_update_serializer.is_valid_form(request.data):
             post_update_serializer.save()
+            if request.data["is_premium"]:
+                Profile.objects.filter(user_id = request.data["user"]).update(coins = max(0,user_data.coins-300));
             data=post_update_serializer.data
             return Response(data,status=status.HTTP_200_OK)
         return Response(post_update_serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
@@ -206,6 +209,7 @@ class PostUserRetriveView(APIView):
             temp['is_barter']=post.is_barter
             temp['is_saved']=(save!=None)
             temp['images']=post_images
+            temp["is_premium"] = post.is_premium
             temp['questions']=questions
             data.append(temp) 
         return Response(data,status=status.HTTP_200_OK)
@@ -311,6 +315,7 @@ class SinglePostRetriveView(APIView):
         data['images']=post_images
         data['questions']=questions
         data['is_reserved']=is_reserved
+        data["is_premium"] = post.is_premium
         data['reserved_expire_date']= reserve_expire_date
         data['reserved_expire_time']=expire_time
         
@@ -337,12 +342,13 @@ class PostRetriveView(APIView):
             posts=Post.objects.all().order_by('price')
         elif(sort=="highest"):
             posts=Post.objects.all().order_by('-price')   
-        elif(sort=="lowest"):
-            posts=Post.objects.all().order_by('date','time')
+        elif(sort=="new"):
+            posts=Post.objects.all().order_by('-date','-time')
         else:
             posts=Post.objects.all()    
         
-        data=[]
+        temp_data=[]
+        data = []
         
         for post in posts:
             if category!="Any" and post.category != category:
@@ -375,9 +381,16 @@ class PostRetriveView(APIView):
             temp['brand']=post.brand
             temp['is_donate'] = post.is_donate
             temp['is_barter'] = post.is_barter
+            temp["is_premium"] = post.is_premium
             # temp['is_owner']=(user.user_id==payload['user_id'])
-            temp['image']=post_images[0]
-            data.append(temp)
+            temp['image']=len(post_images)>0 and post_images[0]
+            temp_data.append(temp)
+        for  item in temp_data:
+            if item['is_premium']:
+                data.append(item)
+        for  item in temp_data:
+            if not item['is_premium']:
+                data.append(item)        
         return Response(data,status=status.HTTP_200_OK)
 
 

@@ -94,6 +94,7 @@ class UsernameRetrieveView(APIView):
             temp['city']=user.city
             temp['district']=user.district
             temp['image']=user.image
+            temp['coins']=user.coins
             data.append(temp)
         return Response(data,status=status.HTTP_200_OK)
 
@@ -144,6 +145,7 @@ class GetMyDetailsView(APIView):
         temp['city']=user.city
         temp['district']=user.district
         temp['image']=user.image
+        temp['coins']=user.coins
         temp['barter_count']=barter_count
         temp['post_count']=post_count
         temp['donate_count']=donate_count
@@ -173,6 +175,7 @@ class GetUserDetailsView(APIView):
         temp['barter_count']=barter_count
         temp['post_count']=post_count
         temp['donate_count']=donate_count
+        temp['coins']=user.coins
         return Response(temp,status=status.HTTP_200_OK)   
 
 class ProfileBuyView(APIView):
